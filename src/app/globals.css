@@ -17,7 +17,11 @@
 
   body {
     @apply bg-background text-foreground min-h-screen;
-    background-image: radial-gradient(ellipse at top center, #1a1f2e 0%, #0b0f14 50%);
+    background-image: radial-gradient(
+      ellipse at top center,
+      #1a1f2e 0%,
+      #0b0f14 50%
+    );
     background-attachment: fixed;
   }
 
@@ -42,7 +46,7 @@
 
 @layer components {
   .panel {
-    @apply rounded-xl border border-border bg-panel p-6;
+    @apply border-border bg-panel rounded-xl border p-6;
   }
 
   .gradient-text {
