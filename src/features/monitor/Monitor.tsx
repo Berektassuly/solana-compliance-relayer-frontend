@@ -1,22 +1,25 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useSyncExternalStore } from 'react';
 import { TransactionTable } from './TransactionTable';
 import { useUIStore } from '@/store/useUIStore';
 import { getTransactions } from '@/services/transactions';
 import type { Transaction } from '@/types/transaction';
 import { Loader2 } from 'lucide-react';
 
+const emptySubscribe = () => () => {};
+
 export function Monitor() {
   const { transactions: storeTransactions } = useUIStore();
   const [initialTransactions, setInitialTransactions] = useState<Transaction[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isMounted, setIsMounted] = useState(false);
-
-  // Ensure component is mounted before rendering dynamic content
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  
+  // Use useSyncExternalStore for hydration detection (React 18+ pattern)
+  const isMounted = useSyncExternalStore(
+    emptySubscribe,
+    () => true,
+    () => false
+  );
 
   // Load initial mock transactions
   useEffect(() => {

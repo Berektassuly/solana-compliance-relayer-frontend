@@ -73,8 +73,6 @@ export function TransferForm() {
     }
   };
 
-  const selectedAsset = ASSETS.find((a) => a.id === 'usdc');
-
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
       {/* Asset Select */}
