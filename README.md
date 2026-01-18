@@ -1,97 +1,202 @@
-# Solana Compliance Relayer
+# Solana Compliance Relayer Frontend
 
-Professional-grade DeFi interface for privacy-preserving asset transfers on the Solana network. This repository implements a high-fidelity relayer dashboard featuring compliance verification and confidential transaction processing.
+A high-performance dashboard for privacy-preserving asset transfers on Solana with integrated compliance verification.
+
+---
 
 ## Technical Specifications
 
-* **Framework**: Next.js 16.1.3 (App Router) utilizing the Turbopack build engine for optimized performance.
-* **Library**: React 19 with native support for Server Components and improved state management.
-* **Styling**: Tailwind CSS 4.1 using a high-performance engine and CSS-first configuration.
-* **Language**: TypeScript 5.9.3 ensuring strict type safety and modern syntax support.
-* **State Management**: Zustand 5.0 for lightweight and predictable client-side state.
-* **Validation**: Zod 3.24 for runtime schema validation and data integrity.
-* **Animations**: Framer Motion 12 for hardware-accelerated UI transitions.
+| Category | Technology | Version |
+|----------|------------|---------|
+| Framework | Next.js (App Router + Turbopack) | 16.1.3 |
+| Runtime | React (Server Components, Concurrent Mode) | 19.1.0 |
+| Styling | Tailwind CSS (Rust-based engine) | 4.1.x |
+| Language | TypeScript | 5.9.x |
+| State Management | Zustand | 5.0.x |
+| Schema Validation | Zod | 3.24.x |
+| Linting | ESLint (Flat Config) | 9.17.x |
+| Architecture | Feature-Sliced Design (FSD) | — |
+
+---
 
 ## Core Features
 
-* **Transfer Terminal**: Support for both standard Public transfers and ElGamal-encrypted Confidential transfers.
-* **Transaction Monitor**: Real-time tracking interface with status management (Pending, Confirmed, Failed).
-* **Architecture**: Modular implementation following Feature-Sliced Design (FSD) principles to separate business logic from UI components.
-* **Quality Control**: Strict linting via ESLint 9 (Flat Config) and automated formatting with Prettier.
+### Dual-Mode Terminal
+
+The transfer terminal supports two operational modes:
+
+- **PUBLIC Mode**: Standard SPL token transfers with full on-chain visibility.
+- **CONFIDENTIAL Mode**: ElGamal-encrypted transfers via the Token-2022 Confidential Transfers extension, preserving transaction privacy while maintaining compliance.
+
+Mode switching is seamless with real-time UI feedback indicating the active privacy level.
+
+### Real-Time Transaction Monitor
+
+An advanced transaction tracking panel with:
+
+- Animated status transitions across `Pending`, `Confirmed`, and `Failed` states.
+- Automatic polling and state synchronization via Zustand stores.
+- Optimistic UI updates with rollback on failure.
+
+---
 
 ## Project Structure
 
-```text
+This project follows **Feature-Sliced Design (FSD)** principles for scalable architecture:
+
+```
 src/
-├── app/          # Core routing and global layout definitions
-├── components/   # Shared UI components and layout fragments
-├── features/     # Encapsulated logic for Terminal and Monitor modules
-├── services/     # Data Access Layer and external API client definitions
-├── store/        # Global state definitions (Zustand)
-└── lib/          # Shared utilities and global constants
-
+├── app/                    # Next.js App Router (layouts, pages, global styles)
+│   ├── globals.css         # Tailwind v4 CSS-first configuration
+│   ├── layout.tsx          # Root layout with providers
+│   └── page.tsx            # Main dashboard page
+├── components/             # Shared UI primitives
+│   └── ui/                 # Button, Input, Select, etc.
+├── features/               # Feature modules (FSD slices)
+│   ├── terminal/           # Transfer form and mode switching
+│   └── monitor/            # Transaction table and status display
+├── hooks/                  # Custom React hooks
+│   └── useHydrated.ts      # SSR hydration safety hook
+├── lib/                    # Utilities and constants
+│   ├── constants.ts        # Asset definitions, mode labels
+│   └── utils.ts            # Helper functions (cn, etc.)
+├── services/               # API layer and external integrations
+│   ├── transfer.ts         # Transfer submission logic
+│   └── transactions.ts     # Transaction fetching
+├── store/                  # Zustand state management
+│   └── useUIStore.ts       # UI state (transactions, mode, loading)
+└── types/                  # TypeScript type definitions
+    └── transaction.ts      # Transaction interfaces
 ```
 
-## Installation and Setup
+---
 
-### Requirements
+## Getting Started
 
-This project requires the pnpm package manager for efficient dependency resolution.
+### Prerequisites
+
+- Node.js 20.x or later
+- pnpm 9.x (recommended) or npm
+
+### Installation
 
 ```bash
-npm install -g pnpm
+# Clone the repository
+git clone https://github.com/Berektassuly/solana-compliance-relayer-frontend.git
+cd solana-compliance-relayer-frontend
 
-```
-
-### Initializing the Workspace
-
-1. Install the project dependencies:
-```bash
+# Install dependencies
 pnpm install
 
-```
-
-
-2. Install the required PostCSS engine for Tailwind v4 compatibility:
-```bash
-pnpm add -D @tailwindcss/postcss
-
-```
-
-
-
-### Development Environment
-
-Launch the development server:
-
-```bash
+# Start the development server
 pnpm dev
-
 ```
 
-The application defaults to `http://localhost:3000`. If the port is occupied by another process, Next.js will scale to port `3001`.
+The application will be available at `http://localhost:3000`.
 
-## Development Standards
+### Environment Variables
 
-### Linting and Formatting
+Create a `.env.local` file in the project root:
 
-The project enforces code quality through automated checks. In MINGW64 (Git Bash) environments, path conversion may interfere with the lint command. Use the following syntax to execute linting:
+| Variable | Description | Required |
+|----------|-------------|----------|
+| `NEXT_PUBLIC_RELAYER_API_URL` | Backend relayer API endpoint | Yes |
+
+---
+
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start development server with Turbopack |
+| `pnpm build` | Create production build |
+| `pnpm start` | Start production server |
+| `pnpm lint` | Run ESLint checks |
+
+---
+
+## CSS Architecture
+
+This project uses **Tailwind CSS v4** with its CSS-first configuration approach.
+
+### Key Differences from Tailwind v3
+
+Tailwind v4 replaces JavaScript configuration with native CSS:
+
+```css
+/* src/app/globals.css */
+@import "tailwindcss";
+@config "../../tailwind.config.ts";
+```
+
+The `@config` directive loads theme extensions from `tailwind.config.ts`, enabling custom colors, fonts, and utilities:
+
+```typescript
+// tailwind.config.ts (theme excerpt)
+colors: {
+  background: "#0b0f14",
+  panel: "#111722",
+  primary: {
+    DEFAULT: "#7c3aed",
+    dark: "#5b21b6",
+    light: "#a78bfa",
+  },
+  status: {
+    pending: "#eab308",
+    confirmed: "#22c55e",
+    failed: "#ef4444",
+  },
+}
+```
+
+### PostCSS Bridge
+
+Tailwind v4 requires the dedicated PostCSS plugin:
+
+```javascript
+// postcss.config.mjs
+const config = {
+  plugins: {
+    '@tailwindcss/postcss': {},
+    autoprefixer: {},
+  },
+};
+```
+
+---
+
+## Troubleshooting
+
+### Windows / MINGW64: `next lint` Path Conversion Error
+
+On Windows with Git Bash (MINGW64), running `next lint` may produce:
+
+```
+Invalid project directory provided, no such directory: C:\...\lint
+```
+
+This occurs due to MSYS path conversion. The project uses `eslint .` directly instead of `next lint` to avoid this issue. If you need to run Next.js lint commands manually, prefix with:
 
 ```bash
 MSYS_NO_PATHCONV=1 pnpm lint
-
 ```
 
-For automated formatting and Tailwind class sorting:
+### Port Already in Use
 
-```bash
-pnpm format:fix
-```
+If port 3000 is occupied, Next.js will automatically select the next available port (3001, 3002, etc.). Check the terminal output for the active URL.
 
-### CSS Architecture
+---
 
-Theme variables and Tailwind configurations are defined within `src/app/globals.css` using the `@theme` block. This project utilizes the CSS-first approach inherent in Tailwind CSS v4, moving configuration from JavaScript files directly into the stylesheet.
+## Author
+
+**Mukhammedali Berektassuly**
+
+- GitHub: [Berektassuly](https://github.com/Berektassuly)
+- LinkedIn: [mukhammedali-berektassuly](https://www.linkedin.com/in/mukhammedali-berektassuly)
+- Blog: [berektassuly.com](https://berektassuly.com/)
+
+---
 
 ## License
 
-Proprietary - All Rights Reserved.
+This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
