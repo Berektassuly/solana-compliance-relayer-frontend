@@ -37,18 +37,33 @@ export async function initWasm(): Promise<WasmExports> {
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    // Dynamically import the JS bindings
-    const wasmBgJs = await import('../../wasm/pkg/solana_transfer_wasm_bg.js');
+    // Fetch the JS bindings source and execute it
+    const jsResponse = await fetch('/wasm/solana_transfer_wasm_bg.js');
+    const jsCode = await jsResponse.text();
+    
+    // Create a module-like object to capture exports
+    const wasmBgJs: Record<string, unknown> = {};
+    
+    // Execute the JS code in a way that captures exports
+    const moduleCode = jsCode
+      .replace(/^export function /gm, 'wasmBgJs.')
+      .replace(/^export const /gm, 'const ')
+      .replace(/^export let /gm, 'let ')
+      .replace(/^export /gm, '');
+    
+    // eslint-disable-next-line no-new-func
+    const moduleFactory = new Function('wasmBgJs', moduleCode);
+    moduleFactory(wasmBgJs);
     
     // Fetch and instantiate the WASM binary at runtime
     const wasmResponse = await fetch('/wasm/solana_transfer_wasm_bg.wasm');
     const wasmBytes = await wasmResponse.arrayBuffer();
     const wasmInstance = await WebAssembly.instantiate(wasmBytes, {
-      './solana_transfer_wasm_bg.js': wasmBgJs,
+      './solana_transfer_wasm_bg.js': wasmBgJs as WebAssembly.ModuleImports,
     });
 
     // Set the wasm instance exports
-    wasmBgJs.__wbg_set_wasm(wasmInstance.instance.exports);
+    (wasmBgJs.__wbg_set_wasm as (val: WebAssembly.Exports) => void)(wasmInstance.instance.exports);
 
     // Call the start function if it exists
     if (typeof wasmInstance.instance.exports.__wbindgen_start === 'function') {
@@ -56,9 +71,14 @@ export async function initWasm(): Promise<WasmExports> {
     }
 
     wasmModule = {
-      generate_keypair: wasmBgJs.generate_keypair,
-      generate_public_transfer: wasmBgJs.generate_public_transfer,
-      generate_random_address: wasmBgJs.generate_random_address,
+      generate_keypair: wasmBgJs.generate_keypair as () => string,
+      generate_public_transfer: wasmBgJs.generate_public_transfer as (
+        secretKey: string,
+        toAddress: string,
+        amountLamports: bigint,
+        tokenMint?: string | null
+      ) => string,
+      generate_random_address: wasmBgJs.generate_random_address as () => string,
     };
 
     return wasmModule;
