@@ -1,32 +1,60 @@
 'use client';
 
 import { cn } from '@/lib/utils';
-import type { TransactionStatus } from '@/types/transaction';
+import type { BlockchainStatus } from '@/types/transfer-request';
 
 interface StatusBadgeProps {
-  status: TransactionStatus;
+  status: BlockchainStatus;
 }
 
-const statusConfig: Record<TransactionStatus, { label: string; className: string; pulse: boolean }> = {
+/**
+ * Status configuration mapping blockchain_status to UI representation.
+ * Colors match the design system in tailwind.config.ts.
+ */
+const statusConfig: Record<
+  BlockchainStatus,
+  { label: string; colorClass: string; bgClass: string; pulse: boolean }
+> = {
   pending: {
     label: 'Pending',
-    className: 'text-status-pending',
+    colorClass: 'text-gray-400',
+    bgClass: 'bg-gray-400',
+    pulse: false,
+  },
+  pending_submission: {
+    label: 'Queued',
+    colorClass: 'text-status-pending',
+    bgClass: 'bg-status-pending',
+    pulse: true,
+  },
+  processing: {
+    label: 'Processing',
+    colorClass: 'text-status-pending',
+    bgClass: 'bg-status-pending',
+    pulse: true,
+  },
+  submitted: {
+    label: 'Submitted',
+    colorClass: 'text-blue-400',
+    bgClass: 'bg-blue-400',
     pulse: true,
   },
   confirmed: {
     label: 'Confirmed',
-    className: 'text-status-confirmed',
+    colorClass: 'text-status-confirmed',
+    bgClass: 'bg-status-confirmed',
     pulse: false,
   },
   failed: {
     label: 'Failed',
-    className: 'text-status-failed',
+    colorClass: 'text-status-failed',
+    bgClass: 'bg-status-failed',
     pulse: false,
   },
 };
 
 export function StatusBadge({ status }: StatusBadgeProps) {
-  const config = statusConfig[status];
+  const config = statusConfig[status] ?? statusConfig.pending;
 
   return (
     <div className="flex items-center gap-2">
@@ -35,20 +63,18 @@ export function StatusBadge({ status }: StatusBadgeProps) {
           <span
             className={cn(
               'animate-ping absolute inline-flex h-full w-full rounded-full opacity-75',
-              status === 'pending' && 'bg-status-pending'
+              config.bgClass
             )}
           />
         )}
         <span
           className={cn(
             'relative inline-flex rounded-full h-2 w-2',
-            status === 'pending' && 'bg-status-pending',
-            status === 'confirmed' && 'bg-status-confirmed',
-            status === 'failed' && 'bg-status-failed'
+            config.bgClass
           )}
         />
       </span>
-      <span className={cn('text-sm font-medium', config.className)}>
+      <span className={cn('text-sm font-medium', config.colorClass)}>
         {config.label}
       </span>
     </div>

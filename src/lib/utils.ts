@@ -24,6 +24,16 @@ export function formatAmount(amount: number, token: string): string {
 }
 
 /**
+ * Convert lamports to SOL for display.
+ * 1 SOL = 1,000,000,000 lamports (10^9)
+ */
+export function lamportsToSol(lamports: number): string {
+  const sol = lamports / 1_000_000_000;
+  // Use up to 4 decimal places, remove trailing zeros
+  return sol.toFixed(4).replace(/\.?0+$/, '');
+}
+
+/**
  * Generate a random transaction ID
  */
 export function generateId(): string {
