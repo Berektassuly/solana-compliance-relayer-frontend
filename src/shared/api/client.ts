@@ -1,0 +1,269 @@
+/**
+ * Solana Compliance Relayer API Client
+ * 
+ * Service-oriented API client with proper error handling and type safety.
+ * Directly maps to backend API endpoints.
+ */
+
+// ============================================================================
+// Backend-aligned Domain Types
+// ============================================================================
+
+export type BlockchainStatus = 
+  | 'pending' 
+  | 'pending_submission' 
+  | 'processing' 
+  | 'submitted' 
+  | 'confirmed' 
+  | 'failed';
+
+export type ComplianceStatus = 'pending' | 'approved' | 'rejected';
+
+export type TransferMode = 'public' | 'confidential';
+
+/**
+ * Transfer details - matches backend TransferType enum
+ */
+export type TransferDetails = 
+  | { type: 'public'; amount: number }
+  | { 
+      type: 'confidential'; 
+      new_decryptable_available_balance: string;
+      equality_proof: string;
+      ciphertext_validity_proof: string;
+      range_proof: string;
+    };
+
+/**
+ * TransferRequest - Core entity from backend
+ * Matches: src/domain/types.rs::TransferRequest
+ */
+export interface TransferRequest {
+  id: string;
+  from_address: string;
+  to_address: string;
+  transfer_details: TransferDetails;
+  token_mint?: string;
+  compliance_status: ComplianceStatus;
+  blockchain_status: BlockchainStatus;
+  blockchain_signature?: string;
+  blockchain_retry_count: number;
+  blockchain_last_error?: string;
+  blockchain_next_retry_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * SubmitTransferRequest - API request body
+ * Matches: src/domain/types.rs::SubmitTransferRequest
+ */
+export interface SubmitTransferRequest {
+  from_address: string;
+  to_address: string;
+  transfer_details: TransferDetails;
+  token_mint?: string;
+  signature: string;
+}
+
+/**
+ * Paginated response wrapper
+ */
+export interface PaginatedResponse<T> {
+  items: T[];
+  next_cursor?: string;
+  has_more: boolean;
+}
+
+/**
+ * Health check response
+ */
+export interface HealthResponse {
+  status: 'healthy' | 'degraded' | 'unhealthy';
+  database: 'healthy' | 'degraded' | 'unhealthy';
+  blockchain: 'healthy' | 'degraded' | 'unhealthy';
+  timestamp: string;
+  version: string;
+}
+
+/**
+ * Backend error response
+ */
+export interface ErrorResponse {
+  error: {
+    type: string;
+    message: string;
+  };
+}
+
+/**
+ * Rate limit error response
+ */
+export interface RateLimitResponse extends ErrorResponse {
+  retry_after: number;
+}
+
+// ============================================================================
+// API Client Configuration
+// ============================================================================
+
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+class ApiClientError extends Error {
+  constructor(
+    public readonly type: string,
+    message: string,
+    public readonly status: number,
+    public readonly retryAfter?: number
+  ) {
+    super(message);
+    this.name = 'ApiClientError';
+  }
+}
+
+// ============================================================================
+// API Client Methods
+// ============================================================================
+
+async function handleResponse<T>(response: Response): Promise<T> {
+  if (!response.ok) {
+    const contentType = response.headers.get('content-type');
+    
+    if (contentType?.includes('application/json')) {
+      const errorBody = await response.json();
+      
+      if (response.status === 429) {
+        const rateLimitError = errorBody as RateLimitResponse;
+        throw new ApiClientError(
+          rateLimitError.error.type,
+          rateLimitError.error.message,
+          response.status,
+          rateLimitError.retry_after
+        );
+      }
+      
+      const error = errorBody as ErrorResponse;
+      throw new ApiClientError(
+        error.error.type,
+        error.error.message,
+        response.status
+      );
+    }
+    
+    throw new ApiClientError(
+      'network_error',
+      `HTTP ${response.status}: ${response.statusText}`,
+      response.status
+    );
+  }
+  
+  return response.json();
+}
+
+/**
+ * Submit a new transfer request
+ */
+export async function submitTransfer(
+  request: SubmitTransferRequest
+): Promise<TransferRequest> {
+  const response = await fetch(`${API_BASE_URL}/transfer-requests`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+  
+  return handleResponse<TransferRequest>(response);
+}
+
+/**
+ * Get a single transfer request by ID
+ */
+export async function getTransfer(id: string): Promise<TransferRequest> {
+  const response = await fetch(`${API_BASE_URL}/transfer-requests/${id}`);
+  return handleResponse<TransferRequest>(response);
+}
+
+/**
+ * List transfer requests with pagination
+ */
+export async function listTransfers(
+  limit: number = 20,
+  cursor?: string
+): Promise<PaginatedResponse<TransferRequest>> {
+  const params = new URLSearchParams({ limit: String(limit) });
+  if (cursor) {
+    params.set('cursor', cursor);
+  }
+  
+  const response = await fetch(`${API_BASE_URL}/transfer-requests?${params}`);
+  return handleResponse<PaginatedResponse<TransferRequest>>(response);
+}
+
+/**
+ * Retry blockchain submission for a transfer
+ */
+export async function retryTransfer(id: string): Promise<TransferRequest> {
+  const response = await fetch(`${API_BASE_URL}/transfer-requests/${id}/retry`, {
+    method: 'POST',
+  });
+  return handleResponse<TransferRequest>(response);
+}
+
+/**
+ * Get system health status
+ */
+export async function getHealth(): Promise<HealthResponse> {
+  const response = await fetch(`${API_BASE_URL}/health`);
+  return handleResponse<HealthResponse>(response);
+}
+
+// Export error class for type checking
+export { ApiClientError };
+
+// ============================================================================
+// Utility Functions
+// ============================================================================
+
+/**
+ * Extract public amount from transfer details
+ */
+export function getTransferAmount(details: TransferDetails): number | null {
+  if (details.type === 'public') {
+    return details.amount;
+  }
+  return null; // Confidential transfers don't expose amount
+}
+
+/**
+ * Check if a transfer is in a terminal state
+ */
+export function isTerminalStatus(status: BlockchainStatus): boolean {
+  return status === 'confirmed' || status === 'failed';
+}
+
+/**
+ * Check if a transfer can be retried
+ */
+export function canRetry(transfer: TransferRequest): boolean {
+  return (
+    transfer.blockchain_status === 'pending_submission' ||
+    transfer.blockchain_status === 'failed'
+  );
+}
+
+/**
+ * Format transfer status for display
+ */
+export function formatStatus(status: BlockchainStatus): string {
+  const labels: Record<BlockchainStatus, string> = {
+    pending: 'Pending',
+    pending_submission: 'Queued',
+    processing: 'Processing',
+    submitted: 'Submitted',
+    confirmed: 'Confirmed',
+    failed: 'Failed',
+  };
+  return labels[status];
+}
