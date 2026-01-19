@@ -15,6 +15,7 @@ A high-performance dashboard for privacy-preserving asset transfers on Solana wi
 | State Management | Zustand | 5.0.x |
 | Schema Validation | Zod | 3.24.x |
 | Linting | ESLint (Flat Config) | 9.17.x |
+| WASM | Rust + wasm-pack (client-side signing) | 1.x |
 | Architecture | Feature-Sliced Design (FSD) | — |
 
 ---
@@ -103,6 +104,74 @@ Create a `.env.local` file in the project root:
 | `NEXT_PUBLIC_RELAYER_API_URL` | Backend relayer API endpoint | Yes |
 
 ---
+
+## WASM Module
+
+The frontend includes a **Rust-based WebAssembly module** for client-side transaction generation and signing. This enables secure key handling without exposing private keys to the network.
+
+### Architecture
+
+```
+wasm/
+├── Cargo.toml              # Rust dependencies (ed25519, bs58, serde)
+├── src/
+│   └── lib.rs              # WASM-exported functions
+└── pkg/                    # wasm-pack build output (gitignored)
+    ├── solana_transfer_wasm_bg.wasm
+    └── solana_transfer_wasm_bg.js
+
+public/wasm/                # Runtime-loaded WASM files (committed)
+├── solana_transfer_wasm_bg.wasm
+└── solana_transfer_wasm_bg.js
+```
+
+### Exported Functions
+
+| Function | Description |
+|----------|-------------|
+| `generate_keypair()` | Generate a new Ed25519 keypair (Base58-encoded) |
+| `generate_public_transfer(secretKey, toAddress, amountLamports, tokenMint?)` | Create a signed transfer request |
+| `generate_random_address()` | Generate a random Solana-compatible address |
+
+### Building the WASM Module
+
+**Prerequisites:**
+- Rust toolchain (`rustup`)
+- wasm-pack: `cargo install wasm-pack`
+
+```bash
+# Build the WASM package
+cd wasm
+wasm-pack build --target web --out-dir pkg
+
+# Copy to public folder for runtime loading
+cd ..
+cp wasm/pkg/solana_transfer_wasm_bg.wasm public/wasm/
+cp wasm/pkg/solana_transfer_wasm_bg.js public/wasm/
+```
+
+### Usage in TypeScript
+
+```typescript
+import { generateKeypair, generatePublicTransfer } from '@/lib/wasm';
+
+// Generate a new keypair
+const keypair = await generateKeypair();
+// { public_key: "...", secret_key: "..." }
+
+// Create a signed transfer (1 SOL)
+const transfer = await generatePublicTransfer(
+  keypair.secret_key,
+  destinationAddress,
+  1_000_000_000  // lamports
+);
+```
+
+### Why WASM?
+
+1. **Security**: Private keys never leave the browser
+2. **Performance**: Native-speed cryptographic operations
+3. **Portability**: Same Rust code can run on server or client
 
 ## Scripts
 
