@@ -27,6 +27,6 @@ export default tseslint.config(
     },
   },
   {
-    ignores: ["node_modules/**", ".next/**", "*.config.mjs"],
+    ignores: ["node_modules/**", ".next/**", "*.config.mjs", "wasm/pkg/**"],
   }
 );

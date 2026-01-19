@@ -4,6 +4,28 @@
  */
 
 // ============================================================================
+// WASM Module Output Types
+// ============================================================================
+
+/**
+ * Result from WASM keypair generation.
+ */
+export interface KeypairResult {
+  public_key: string;
+  secret_key: string;
+}
+
+/**
+ * Result from WASM transfer generation.
+ */
+export interface TransferResult {
+  request_json: string;
+  from_address: string;
+  to_address: string;
+  signature: string;
+}
+
+// ============================================================================
 // Enums
 // ============================================================================
 
