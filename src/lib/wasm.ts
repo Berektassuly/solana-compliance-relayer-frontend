@@ -25,23 +25,34 @@ let initPromise: Promise<WasmExports> | null = null;
 
 /**
  * Initialize the WASM module (lazy-loaded, only once).
+ * Only works in the browser - throws if called on the server.
  */
 export async function initWasm(): Promise<WasmExports> {
+  // Only run in browser
+  if (typeof window === 'undefined') {
+    throw new Error('WASM can only be initialized in the browser');
+  }
+  
   if (wasmModule) return wasmModule;
   if (initPromise) return initPromise;
 
   initPromise = (async () => {
-    // For wasm-pack --target web, we need to use the _bg.js bindings
-    // and initialize with the wasm binary
+    // Dynamically import the JS bindings
     const wasmBgJs = await import('../../wasm/pkg/solana_transfer_wasm_bg.js');
-    const wasmBinary = await import('../../wasm/pkg/solana_transfer_wasm_bg.wasm');
+    
+    // Fetch and instantiate the WASM binary at runtime
+    const wasmResponse = await fetch('/wasm/solana_transfer_wasm_bg.wasm');
+    const wasmBytes = await wasmResponse.arrayBuffer();
+    const wasmInstance = await WebAssembly.instantiate(wasmBytes, {
+      './solana_transfer_wasm_bg.js': wasmBgJs,
+    });
 
-    // Set the wasm instance
-    wasmBgJs.__wbg_set_wasm(wasmBinary);
+    // Set the wasm instance exports
+    wasmBgJs.__wbg_set_wasm(wasmInstance.instance.exports);
 
     // Call the start function if it exists
-    if (typeof wasmBinary.__wbindgen_start === 'function') {
-      wasmBinary.__wbindgen_start();
+    if (typeof wasmInstance.instance.exports.__wbindgen_start === 'function') {
+      (wasmInstance.instance.exports.__wbindgen_start as () => void)();
     }
 
     wasmModule = {
