@@ -15,7 +15,6 @@ import {
   XCircle, 
   AlertCircle,
   RefreshCw,
-  Database,
   Cpu,
   Shield,
 } from 'lucide-react';

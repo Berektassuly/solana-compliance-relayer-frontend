@@ -138,7 +138,7 @@ export const useTransferStore = create<TransferState>()(
             isLoading: false,
           };
         });
-      } catch (err) {
+      } catch {
         set({ isLoading: false });
       }
     },
