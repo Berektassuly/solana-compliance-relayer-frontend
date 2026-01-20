@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, CheckCircle, RotateCw } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, RotateCw, ExternalLink } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { formatAddress, lamportsToSol } from '@/lib/utils';
 import { retryTransferRequest } from '@/services/transfer-requests';
@@ -133,7 +133,20 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
 
                 {/* STATUS Column */}
                 <td className="px-4 py-4">
-                  <StatusBadge status={tx.blockchain_status} />
+                  <div className="flex items-center gap-2">
+                    <StatusBadge status={tx.blockchain_status} />
+                    {tx.blockchain_signature && (
+                      <a
+                        href={`https://explorer.solana.com/tx/${tx.blockchain_signature}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-muted hover:text-primary transition-colors"
+                        title="View on Solana Explorer"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5" />
+                      </a>
+                    )}
+                  </div>
                   {tx.blockchain_status === 'failed' && tx.blockchain_last_error && (
                     <p className="text-xs text-red-400 mt-1 max-w-[200px] truncate">
                       {tx.blockchain_last_error}
