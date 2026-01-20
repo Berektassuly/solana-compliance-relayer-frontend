@@ -17,8 +17,8 @@ interface UIState {
 }
 
 export const useUIStore = create<UIState>((set) => ({
-  // Default to confidential mode
-  transferMode: 'confidential',
+  // Default to public mode
+  transferMode: 'public',
   setTransferMode: (mode) => set({ transferMode: mode }),
   
   // Transactions list

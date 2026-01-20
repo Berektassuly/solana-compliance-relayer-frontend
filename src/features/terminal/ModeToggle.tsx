@@ -33,13 +33,17 @@ export function ModeToggle() {
 
       {modes.map(({ value, label, icon: Icon }) => {
         const isActive = transferMode === value;
+        const isDisabled = value === 'confidential'; // Temporarily disable confidential mode
         return (
           <button
             key={value}
-            onClick={() => setTransferMode(value)}
+            onClick={() => !isDisabled && setTransferMode(value)}
+            disabled={isDisabled}
+            title={isDisabled ? 'Confidential transfers coming soon' : undefined}
             className={cn(
               'relative z-10 flex-1 flex items-center justify-center gap-2 px-6 py-2.5 text-sm font-medium rounded-md transition-colors duration-200',
-              isActive ? 'text-white' : 'text-muted hover:text-foreground'
+              isActive ? 'text-white' : 'text-muted hover:text-foreground',
+              isDisabled && 'opacity-50 cursor-not-allowed hover:text-muted'
             )}
           >
             <Icon className="h-4 w-4" />
