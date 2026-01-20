@@ -36,7 +36,7 @@ const transferSchema = z.object({
 type TransferFormData = z.infer<typeof transferSchema>;
 
 export function TransferForm() {
-  const { transferMode, isSubmitting, setIsSubmitting, addTransaction } = useUIStore();
+  const { transferMode, isSubmitting, setIsSubmitting } = useUIStore();
   const modeConfig = MODE_LABELS[transferMode];
 
   const {
@@ -57,17 +57,20 @@ export function TransferForm() {
   const onSubmit = async (data: TransferFormData) => {
     setIsSubmitting(true);
     try {
-      const { transaction } = await submitTransfer({
+      const result = await submitTransfer({
         mode: transferMode,
         asset: data.asset,
         recipient: data.recipient,
         amount: Number(data.amount),
       });
       
-      addTransaction(transaction);
+      console.log('Transfer submitted:', result.transaction.id);
       reset();
+      // The Monitor component will pick up the new transaction via polling
     } catch (error) {
       console.error('Transfer failed:', error);
+      // TODO: Add toast notification for error display
+      alert(error instanceof Error ? error.message : 'Transfer failed');
     } finally {
       setIsSubmitting(false);
     }
