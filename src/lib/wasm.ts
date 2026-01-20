@@ -45,13 +45,17 @@ export async function initWasm(): Promise<WasmExports> {
     const wasmBgJs: Record<string, unknown> = {};
     
     // Execute the JS code in a way that captures exports
+    // Convert ES module exports to object property assignments
     const moduleCode = jsCode
-      .replace(/^export function /gm, 'wasmBgJs.')
-      .replace(/^export const /gm, 'const ')
-      .replace(/^export let /gm, 'let ')
-      .replace(/^export /gm, '');
+      // export function name(...) { -> wasmBgJs.name = function name(...) {
+      .replace(/^export function (\w+)/gm, 'wasmBgJs.$1 = function $1')
+      // export const name = ... -> wasmBgJs.name = ...
+      .replace(/^export const (\w+)\s*=/gm, 'wasmBgJs.$1 =')
+      // export let name = ... -> wasmBgJs.name = ...
+      .replace(/^export let (\w+)\s*=/gm, 'wasmBgJs.$1 =')
+      // Remove any remaining bare exports
+      .replace(/^export\s+/gm, '');
     
-    // eslint-disable-next-line no-new-func
     const moduleFactory = new Function('wasmBgJs', moduleCode);
     moduleFactory(wasmBgJs);
     
