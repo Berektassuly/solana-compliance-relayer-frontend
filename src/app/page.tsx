@@ -1,6 +1,7 @@
 'use client';
 
 import { Header } from '@/components/shared/Header';
+import { Footer } from '@/components/shared/Footer';
 import { Terminal } from '@/features/terminal';
 import { Monitor } from '@/features/monitor';
 
@@ -22,6 +23,8 @@ export default function HomePage() {
           </div>
         </div>
       </main>
+
+      <Footer />
     </div>
   );
 }
