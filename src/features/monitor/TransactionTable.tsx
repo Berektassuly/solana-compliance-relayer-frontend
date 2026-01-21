@@ -64,7 +64,7 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
       <table className="w-full">
         <thead>
           <tr className="border-b border-border">
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
+            <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider w-12">
               Type
             </th>
             <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
@@ -73,10 +73,10 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
             <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
               Amount
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
+            <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider min-w-[280px]">
               Status
             </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
+            <th className="px-2 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider w-20">
               Actions
             </th>
           </tr>
@@ -103,7 +103,7 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
                 className="group hover:bg-panel-hover transition-colors duration-150"
               >
                 {/* TYPE Column */}
-                <td className="px-4 py-4">
+                <td className="px-4 py-4 w-12">
                   <div className="flex items-center gap-2">
                     {isConfidential ? (
                       <EyeOff className="h-4 w-4 text-primary" />
@@ -132,7 +132,7 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
                 </td>
 
                 {/* STATUS Column */}
-                <td className="px-4 py-4">
+                <td className="px-4 py-4 min-w-[280px]">
                   <div className="flex items-center gap-2">
                     <StatusBadge status={tx.blockchain_status} />
                     {tx.blockchain_signature && (
@@ -148,14 +148,14 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
                     )}
                   </div>
                   {tx.blockchain_status === 'failed' && tx.blockchain_last_error && (
-                    <p className="text-xs text-red-400 mt-1 max-w-[200px] truncate">
+                    <p className="text-xs text-red-400 mt-1 max-w-[260px] truncate" title={tx.blockchain_last_error}>
                       {tx.blockchain_last_error}
                     </p>
                   )}
                 </td>
 
                 {/* ACTIONS Column */}
-                <td className="px-4 py-4">
+                <td className="px-2 py-4 w-20">
                   {canRetry && (
                     <button
                       onClick={() => handleRetry(tx.id)}
