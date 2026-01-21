@@ -1,7 +1,6 @@
 'use client';
 
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Shield,
@@ -13,6 +12,7 @@ import {
   XCircle,
   Loader2,
   ArrowLeft,
+  RefreshCw,
 } from 'lucide-react';
 import Link from 'next/link';
 import {
@@ -20,10 +20,9 @@ import {
   addToBlocklist,
   removeFromBlocklist,
 } from '@/services/blocklist';
-import type { BlocklistEntry } from '@/services/blocklist';
+import type { BlocklistEntry, ListBlocklistResponse } from '@/services/blocklist';
 
 export default function AdminPage() {
-  const queryClient = useQueryClient();
   const [adminKey, setAdminKey] = useState('');
   const [address, setAddress] = useState('');
   const [reason, setReason] = useState('');
@@ -32,59 +31,69 @@ export default function AdminPage() {
     message: string;
   } | null>(null);
 
-  // Fetch blocklist
-  const {
-    data: blocklist,
-    isLoading,
-    error,
-    refetch,
-  } = useQuery({
-    queryKey: ['blocklist'],
-    queryFn: fetchBlocklist,
-    refetchInterval: 30000, // Refresh every 30s
-  });
+  // Blocklist state
+  const [blocklist, setBlocklist] = useState<ListBlocklistResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingAddress, setDeletingAddress] = useState<string | null>(null);
 
-  // Add mutation
-  const addMutation = useMutation({
-    mutationFn: ({ address, reason }: { address: string; reason: string }) =>
-      addToBlocklist(address, reason),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['blocklist'] });
-      setAddress('');
-      setReason('');
-      showToast('success', data.message);
-    },
-    onError: (error: Error) => {
-      showToast('error', error.message);
-    },
-  });
-
-  // Remove mutation
-  const removeMutation = useMutation({
-    mutationFn: (address: string) => removeFromBlocklist(address),
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: ['blocklist'] });
-      showToast('success', data.message);
-    },
-    onError: (error: Error) => {
-      showToast('error', error.message);
-    },
-  });
-
-  const showToast = (type: 'success' | 'error', message: string) => {
+  const showToast = useCallback((type: 'success' | 'error', message: string) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 5000);
-  };
+  }, []);
 
-  const handleAddAddress = (e: React.FormEvent) => {
+  // Fetch blocklist
+  const loadBlocklist = useCallback(async () => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const data = await fetchBlocklist();
+      setBlocklist(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to fetch blocklist');
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Initial load
+  useEffect(() => {
+    loadBlocklist();
+  }, [loadBlocklist]);
+
+  // Handle add address
+  const handleAddAddress = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!address.trim() || !reason.trim()) return;
-    addMutation.mutate({ address: address.trim(), reason: reason.trim() });
+
+    setIsSubmitting(true);
+    try {
+      const result = await addToBlocklist(address.trim(), reason.trim());
+      showToast('success', result.message);
+      setAddress('');
+      setReason('');
+      loadBlocklist(); // Refresh list
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to add address');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
-  const handleRemove = (entryAddress: string) => {
-    if (confirm(`Remove ${entryAddress} from blocklist?`)) {
-      removeMutation.mutate(entryAddress);
+  // Handle remove address
+  const handleRemove = async (entryAddress: string) => {
+    if (!confirm(`Remove ${entryAddress} from blocklist?`)) return;
+
+    setDeletingAddress(entryAddress);
+    try {
+      const result = await removeFromBlocklist(entryAddress);
+      showToast('success', result.message);
+      loadBlocklist(); // Refresh list
+    } catch (err) {
+      showToast('error', err instanceof Error ? err.message : 'Failed to remove address');
+    } finally {
+      setDeletingAddress(null);
     }
   };
 
@@ -198,10 +207,10 @@ export default function AdminPage() {
 
             <button
               type="submit"
-              disabled={addMutation.isPending || !address || !reason}
+              disabled={isSubmitting || !address || !reason}
               className="flex items-center gap-2 px-6 py-3 bg-primary hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors"
             >
-              {addMutation.isPending ? (
+              {isSubmitting ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
               ) : (
                 <Shield className="h-4 w-4" />
@@ -224,10 +233,11 @@ export default function AdminPage() {
               )}
             </h2>
             <button
-              onClick={() => refetch()}
+              onClick={loadBlocklist}
               disabled={isLoading}
-              className="text-sm text-muted hover:text-foreground transition-colors"
+              className="flex items-center gap-1 text-sm text-muted hover:text-foreground transition-colors disabled:opacity-50"
             >
+              <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
               Refresh
             </button>
           </div>
@@ -236,12 +246,12 @@ export default function AdminPage() {
           {error && (
             <div className="flex items-center gap-2 p-4 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm mb-4">
               <XCircle className="h-4 w-4 flex-shrink-0" />
-              <span>{(error as Error).message}</span>
+              <span>{error}</span>
             </div>
           )}
 
           {/* Loading State */}
-          {isLoading && (
+          {isLoading && !blocklist && (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-6 w-6 animate-spin text-muted" />
             </div>
@@ -256,7 +266,7 @@ export default function AdminPage() {
           )}
 
           {/* Table */}
-          {!isLoading && blocklist && blocklist.entries.length > 0 && (
+          {blocklist && blocklist.entries.length > 0 && (
             <div className="overflow-x-auto">
               <table className="w-full">
                 <thead>
@@ -294,11 +304,15 @@ export default function AdminPage() {
                       <td className="px-4 py-4 text-right">
                         <button
                           onClick={() => handleRemove(entry.address)}
-                          disabled={removeMutation.isPending}
+                          disabled={deletingAddress === entry.address}
                           className="inline-flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-red-400 bg-red-500/10 hover:bg-red-500/20 rounded-md transition-colors disabled:opacity-50"
                           title="Remove from blocklist"
                         >
-                          <Trash2 className="h-3 w-3" />
+                          {deletingAddress === entry.address ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Trash2 className="h-3 w-3" />
+                          )}
                           Remove
                         </button>
                       </td>
@@ -313,3 +327,4 @@ export default function AdminPage() {
     </div>
   );
 }
+
