@@ -1,74 +1,139 @@
+<div align="center">
+
 # Solana Compliance Relayer Frontend
 
-A high-performance dashboard for privacy-preserving asset transfers on Solana with integrated compliance verification.
+### Real-time dashboard for privacy-preserving Solana transfers with integrated compliance monitoring.
+
+[![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
+[![Rust WASM](https://img.shields.io/badge/Rust_WASM-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](LICENSE)
+[![Author](https://img.shields.io/badge/Author-Berektassuly.com-F97316?style=for-the-badge)](https://berektassuly.com)
+
+</div>
 
 ---
 
-## Technical Specifications
+## Table of Contents
 
-| Category | Technology | Version |
-|----------|------------|---------|
-| Framework | Next.js (App Router + Turbopack) | 16.1.3 |
-| Runtime | React (Server Components, Concurrent Mode) | 19.1.0 |
-| Styling | Tailwind CSS (Rust-based engine) | 4.1.x |
-| Language | TypeScript | 5.9.x |
-| State Management | Zustand | 5.0.x |
-| Schema Validation | Zod | 3.24.x |
-| Linting | ESLint (Flat Config) | 9.17.x |
-| WASM | Rust + wasm-pack (client-side signing) | 1.x |
-| Architecture | Feature-Sliced Design (FSD) | — |
-
----
-
-## Core Features
-
-### Dual-Mode Terminal
-
-The transfer terminal supports two operational modes:
-
-- **PUBLIC Mode**: Standard SPL token transfers with full on-chain visibility.
-- **CONFIDENTIAL Mode**: ElGamal-encrypted transfers via the Token-2022 Confidential Transfers extension, preserving transaction privacy while maintaining compliance.
-
-Mode switching is seamless with real-time UI feedback indicating the active privacy level.
-
-### Real-Time Transaction Monitor
-
-An advanced transaction tracking panel with:
-
-- Animated status transitions across `Pending`, `Confirmed`, and `Failed` states.
-- Automatic polling and state synchronization via Zustand stores.
-- Optimistic UI updates with rollback on failure.
+- [Overview](#overview)
+- [Architecture](#architecture)
+- [Key Features](#key-features)
+- [Technical Stack](#technical-stack)
+- [Getting Started](#getting-started)
+- [Environment Configuration](#environment-configuration)
+- [Pages](#pages)
+- [WASM Module](#wasm-module)
+- [CSS Architecture](#css-architecture)
+- [Scripts](#scripts)
+- [Troubleshooting](#troubleshooting)
+- [Contact](#contact)
+- [License](#license)
 
 ---
 
-## Project Structure
+## Overview
 
-This project follows **Feature-Sliced Design (FSD)** principles for scalable architecture:
+This is the official frontend interface for the Solana Compliance Relayer. It provides a DeFi-grade dashboard with two primary panels:
+
+| Panel | Description |
+|-------|-------------|
+| **Terminal** | Submit public or confidential transfers with client-side WASM signing |
+| **Monitor** | Real-time transaction tracking with status updates and retry functionality |
+
+The application connects to the Rust backend via REST API and uses WebAssembly for secure client-side cryptographic operations.
+
+---
+
+## Architecture
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│                        FRONTEND (Next.js 16)                            │
+├─────────────────────────────────────────────────────────────────────────┤
+│                                                                         │
+│  ┌─────────────────┐    ┌──────────────────┐    ┌───────────────────┐   │
+│  │  Terminal Panel │    │  WASM Signer     │    │   Monitor Panel   │   │
+│  │  - Public Mode  │───>│  (Ed25519-dalek) │    │   - Status Table  │   │
+│  │  - Confidential │    │  - Client-side   │    │   - 5s Polling    │   │
+│  └─────────────────┘    └────────┬─────────┘    │   - Retry Action  │   │
+│                                  │              └───────────────────┘   │
+│                                  ▼                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │                     API Layer (services/)                       │    │
+│  │  - transfer-requests.ts    - blocklist.ts (Admin)               │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                                  │                                      │
+└──────────────────────────────────┼──────────────────────────────────────┘
+                                   │ REST API
+                                   ▼
+                     ┌─────────────────────────┐
+                     │   Backend (Axum/Rust)   │
+                     │   Railway Deployment    │
+                     └─────────────────────────┘
+```
+
+### Directory Structure
 
 ```
 src/
-├── app/                    # Next.js App Router (layouts, pages, global styles)
-│   ├── globals.css         # Tailwind v4 CSS-first configuration
-│   ├── layout.tsx          # Root layout with providers
-│   └── page.tsx            # Main dashboard page
+├── app/                    # Next.js App Router
+│   ├── page.tsx            # Main dashboard (Terminal + Monitor)
+│   ├── admin/              # Admin: Blocklist Manager
+│   │   └── page.tsx
+│   ├── globals.css         # Tailwind v4 configuration
+│   └── layout.tsx          # Root layout with providers
 ├── components/             # Shared UI primitives
-│   └── ui/                 # Button, Input, Select, etc.
-├── features/               # Feature modules (FSD slices)
+│   ├── ui/                 # Button, Input, Select components
+│   └── shared/             # Header, Footer
+├── features/               # Feature modules (Feature-Sliced Design)
 │   ├── terminal/           # Transfer form and mode switching
-│   └── monitor/            # Transaction table and status display
+│   ├── monitor/            # Transaction table and status badges
+│   ├── transfer/           # Transfer submission logic
+│   └── wallet/             # Wallet utilities
 ├── hooks/                  # Custom React hooks
-│   └── useHydrated.ts      # SSR hydration safety hook
 ├── lib/                    # Utilities and constants
-│   ├── constants.ts        # Asset definitions, mode labels
-│   └── utils.ts            # Helper functions (cn, etc.)
-├── services/               # API layer and external integrations
-│   ├── transfer.ts         # Transfer submission logic
-│   └── transactions.ts     # Transaction fetching
+│   ├── constants.ts        # Theme colors, asset definitions
+│   ├── utils.ts            # Helper functions (cn, formatAddress)
+│   └── wasm.ts             # WASM module loader
+├── services/               # API layer
+│   ├── transfer-requests.ts # Transfer CRUD operations
+│   └── blocklist.ts        # Admin blocklist API
 ├── store/                  # Zustand state management
-│   └── useUIStore.ts       # UI state (transactions, mode, loading)
-└── types/                  # TypeScript type definitions
-    └── transaction.ts      # Transaction interfaces
+└── types/                  # TypeScript definitions
 ```
+
+---
+
+## Key Features
+
+| Feature | Description |
+|---------|-------------|
+| **Client-Side WASM Signing** | Ed25519 signatures generated via Rust/WASM - private keys never leave the browser |
+| **Dual Transfer Modes** | Public (standard SPL) and Confidential (Token-2022 ElGamal) transfer support |
+| **Real-Time Monitoring** | 5-second polling with animated status transitions |
+| **Admin Blocklist UI** | Dedicated page for managing internal address blocklist |
+| **Dark Theme** | Professional dark navy UI with glassmorphism effects |
+| **Responsive Design** | Optimized for desktop with mobile-friendly fallbacks |
+
+---
+
+## Technical Stack
+
+| Component | Technology | Version |
+|-----------|------------|---------|
+| Framework | Next.js (App Router) | 16.1.x |
+| Runtime | React (Server Components) | 19.1.x |
+| Styling | Tailwind CSS | 4.1.x |
+| Language | TypeScript | 5.9.x |
+| State | Zustand | 5.0.x |
+| Validation | Zod | 4.0.x |
+| Animations | Framer Motion | 12.x |
+| WASM | Rust + wasm-pack | 1.x |
+| Linting | ESLint (Flat Config) | 9.x |
+| Architecture | Feature-Sliced Design | - |
 
 ---
 
@@ -95,32 +160,58 @@ pnpm dev
 
 The application will be available at `http://localhost:3000`.
 
-### Environment Variables
+---
+
+## Environment Configuration
 
 Create a `.env.local` file in the project root:
 
+```env
+NEXT_PUBLIC_API_URL=https://your-backend.railway.app
+```
+
 | Variable | Description | Required |
 |----------|-------------|----------|
-| `NEXT_PUBLIC_RELAYER_API_URL` | Backend relayer API endpoint | Yes |
+| `NEXT_PUBLIC_API_URL` | Backend relayer API endpoint | Yes |
+
+---
+
+## Pages
+
+### Dashboard (/)
+
+The main page with two-panel layout:
+
+- **Terminal Panel**: Submit transfers with asset selection, recipient input, and amount
+- **Monitor Panel**: View all transactions with status, retry failed transfers
+
+### Admin (/admin)
+
+Blocklist management interface:
+
+| Feature | Description |
+|---------|-------------|
+| **Add Address** | Block a wallet address with reason |
+| **View Blocklist** | Table of all blocked addresses |
+| **Remove Address** | Unblock addresses, allowing retries of previously rejected transfers |
+
+When an address is removed from the blocklist, previously rejected transfers to that address can be retried.
 
 ---
 
 ## WASM Module
 
-The frontend includes a **Rust-based WebAssembly module** for client-side transaction generation and signing. This enables secure key handling without exposing private keys to the network.
+The frontend includes a Rust-based WebAssembly module for secure client-side transaction signing.
 
 ### Architecture
 
 ```
 wasm/
-├── Cargo.toml              # Rust dependencies (ed25519, bs58, serde)
-├── src/
-│   └── lib.rs              # WASM-exported functions
-└── pkg/                    # wasm-pack build output (gitignored)
-    ├── solana_transfer_wasm_bg.wasm
-    └── solana_transfer_wasm_bg.js
+├── Cargo.toml              # Rust dependencies
+├── src/lib.rs              # WASM-exported functions
+└── pkg/                    # Build output
 
-public/wasm/                # Runtime-loaded WASM files (committed)
+public/wasm/                # Runtime files (committed)
 ├── solana_transfer_wasm_bg.wasm
 └── solana_transfer_wasm_bg.js
 ```
@@ -129,86 +220,54 @@ public/wasm/                # Runtime-loaded WASM files (committed)
 
 | Function | Description |
 |----------|-------------|
-| `generate_keypair()` | Generate a new Ed25519 keypair (Base58-encoded) |
-| `generate_public_transfer(secretKey, toAddress, amountLamports, tokenMint?)` | Create a signed transfer request |
-| `generate_random_address()` | Generate a random Solana-compatible address |
+| `generate_keypair()` | Generate Ed25519 keypair (Base58) |
+| `generate_public_transfer(secretKey, toAddress, amount, tokenMint?)` | Create signed transfer request |
+| `generate_random_address()` | Generate random Solana address |
 
-### Building the WASM Module
-
-**Prerequisites:**
-- Rust toolchain (`rustup`)
-- wasm-pack: `cargo install wasm-pack`
+### Building
 
 ```bash
-# Build the WASM package
+# Prerequisites: Rust + wasm-pack
+cargo install wasm-pack
+
+# Build
 cd wasm
 wasm-pack build --target web --out-dir pkg
 
-# Copy to public folder for runtime loading
-cd ..
-cp wasm/pkg/solana_transfer_wasm_bg.wasm public/wasm/
-cp wasm/pkg/solana_transfer_wasm_bg.js public/wasm/
+# Copy to public folder
+cp pkg/solana_transfer_wasm_bg.wasm ../public/wasm/
+cp pkg/solana_transfer_wasm_bg.js ../public/wasm/
 ```
 
-### Usage in TypeScript
+### Usage
 
 ```typescript
 import { generateKeypair, generatePublicTransfer } from '@/lib/wasm';
 
-// Generate a new keypair
 const keypair = await generateKeypair();
-// { public_key: "...", secret_key: "..." }
-
-// Create a signed transfer (1 SOL)
 const transfer = await generatePublicTransfer(
   keypair.secret_key,
   destinationAddress,
-  1_000_000_000  // lamports
+  1_000_000_000  // 1 SOL in lamports
 );
 ```
-
-### Why WASM?
-
-1. **Security**: Private keys never leave the browser
-2. **Performance**: Native-speed cryptographic operations
-3. **Portability**: Same Rust code can run on server or client
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start development server with Turbopack |
-| `pnpm build` | Create production build |
-| `pnpm start` | Start production server |
-| `pnpm lint` | Run ESLint checks |
 
 ---
 
 ## CSS Architecture
 
-This project uses **Tailwind CSS v4** with its CSS-first configuration approach.
+This project uses Tailwind CSS v4 with CSS-first configuration.
 
-### Key Differences from Tailwind v3
-
-Tailwind v4 replaces JavaScript configuration with native CSS:
-
-```css
-/* src/app/globals.css */
-@import "tailwindcss";
-@config "../../tailwind.config.ts";
-```
-
-The `@config` directive loads theme extensions from `tailwind.config.ts`, enabling custom colors, fonts, and utilities:
+### Theme Configuration
 
 ```typescript
-// tailwind.config.ts (theme excerpt)
+// tailwind.config.ts
 colors: {
   background: "#0b0f14",
   panel: "#111722",
   primary: {
     DEFAULT: "#7c3aed",
     dark: "#5b21b6",
-    light: "#a78bfa",
   },
   status: {
     pending: "#eab308",
@@ -218,13 +277,11 @@ colors: {
 }
 ```
 
-### PostCSS Bridge
-
-Tailwind v4 requires the dedicated PostCSS plugin:
+### PostCSS Setup
 
 ```javascript
 // postcss.config.mjs
-const config = {
+export default {
   plugins: {
     '@tailwindcss/postcss': {},
     autoprefixer: {},
@@ -234,38 +291,49 @@ const config = {
 
 ---
 
+## Scripts
+
+| Command | Description |
+|---------|-------------|
+| `pnpm dev` | Start development server (Turbopack) |
+| `pnpm build` | Create production build |
+| `pnpm start` | Start production server |
+| `pnpm lint` | Run ESLint checks |
+
+---
+
 ## Troubleshooting
 
-### Windows / MINGW64: `next lint` Path Conversion Error
+### Windows MINGW64 Path Conversion
 
-On Windows with Git Bash (MINGW64), running `next lint` may produce:
-
-```
-Invalid project directory provided, no such directory: C:\...\lint
-```
-
-This occurs due to MSYS path conversion. The project uses `eslint .` directly instead of `next lint` to avoid this issue. If you need to run Next.js lint commands manually, prefix with:
+On Windows with Git Bash, path conversion may cause issues. Use:
 
 ```bash
 MSYS_NO_PATHCONV=1 pnpm lint
 ```
 
-### Port Already in Use
+### Port Conflicts
 
-If port 3000 is occupied, Next.js will automatically select the next available port (3001, 3002, etc.). Check the terminal output for the active URL.
+If port 3000 is occupied, Next.js automatically selects the next available port. Check terminal output for the active URL.
+
+### WASM Loading Errors
+
+Ensure WASM files exist in `public/wasm/` directory. If missing, rebuild the WASM module.
 
 ---
 
-## Author
+## Contact
 
 **Mukhammedali Berektassuly**
 
-- GitHub: [Berektassuly](https://github.com/Berektassuly)
-- LinkedIn: [mukhammedali-berektassuly](https://www.linkedin.com/in/mukhammedali-berektassuly)
-- Blog: [berektassuly.com](https://berektassuly.com/)
+> This project was built with 💜 by a 17-year-old developer from Kazakhstan
+
+- Website: [berektassuly.com](https://berektassuly.com)
+- Email: [mukhammedali@berektassuly.com](mailto:mukhammedali@berektassuly.com)
+- X/Twitter: [@berektassuly](https://x.com/berektassuly)
 
 ---
 
 ## License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
+This project is licensed under the MIT License. See [LICENSE](LICENSE) for details.
