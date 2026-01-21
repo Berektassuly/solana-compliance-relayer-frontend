@@ -148,7 +148,7 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
                     )}
                   </div>
                   {tx.blockchain_status === 'failed' && tx.blockchain_last_error && (
-                    <p className="text-xs text-red-400 mt-1 max-w-[260px] truncate" title={tx.blockchain_last_error}>
+                    <p className="text-xs text-red-400 mt-1 break-words">
                       {tx.blockchain_last_error}
                     </p>
                   )}
