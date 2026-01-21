@@ -137,11 +137,11 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
                     <StatusBadge status={tx.blockchain_status} />
                     {tx.blockchain_signature && (
                       <a
-                        href={`https://explorer.solana.com/tx/${tx.blockchain_signature}`}
+                        href={`https://explorer.solana.com/tx/${tx.blockchain_signature}?cluster=devnet`}
                         target="_blank"
                         rel="noopener noreferrer"
                         className="text-muted hover:text-primary transition-colors"
-                        title="View on Solana Explorer"
+                        title="View on Solana Explorer (Devnet)"
                       >
                         <ExternalLink className="h-3.5 w-3.5" />
                       </a>
