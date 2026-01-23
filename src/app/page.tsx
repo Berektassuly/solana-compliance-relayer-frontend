@@ -4,14 +4,15 @@ import { Header } from '@/components/shared/Header';
 import { Footer } from '@/components/shared/Footer';
 import { Terminal } from '@/features/terminal';
 import { Monitor } from '@/features/monitor';
+import { RiskScanner } from '@/features/risk-scanner';
 
 export default function HomePage() {
   return (
     <div className="min-h-screen flex flex-col">
       <Header />
       
-      <main className="flex-1 p-4 md:p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6 h-full">
+      <main className="flex-1 p-4 md:p-6 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[420px_1fr] gap-6">
           {/* Left Panel - Terminal */}
           <div className="min-w-0">
             <Terminal />
@@ -21,6 +22,11 @@ export default function HomePage() {
           <div className="min-w-0">
             <Monitor />
           </div>
+        </div>
+
+        {/* Risk Scanner Demo Section */}
+        <div className="max-w-2xl mx-auto">
+          <RiskScanner />
         </div>
       </main>
 
