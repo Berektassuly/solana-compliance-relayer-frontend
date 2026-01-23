@@ -243,7 +243,7 @@ function RecentFlags({ flags }: RecentFlagsProps) {
 
   return (
     <div className="flex-1 min-w-0">
-      <h3 className="text-sm font-medium text-foreground mb-4">Recent Flags</h3>
+      <h3 className="text-sm font-medium text-foreground mb-4">Recent Blocklist Flags</h3>
       <div className="space-y-1">
         {displayFlags.map((flag) => (
           <FlagItem key={flag.id} flag={flag} />
