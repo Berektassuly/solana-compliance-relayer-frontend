@@ -63,7 +63,7 @@ The application connects to the Rust backend via REST API and uses WebAssembly f
 │                                  │              └───────────────────┘   │
 │                                  ▼                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                       Risk Scanner                               │    │
+│  │                       Risk Scanner                              │    │
 │  │  - Pre-flight compliance check    - Animated 3-step analysis    │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                  │                                      │
