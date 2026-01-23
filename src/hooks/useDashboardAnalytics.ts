@@ -108,6 +108,28 @@ function getHourLabel(dateStr: string): string {
 }
 
 /**
+ * Get full date+hour key for unique hourly grouping (e.g., "2026-01-24 14:00").
+ * This prevents collisions between the same hour on different days.
+ */
+function getFullHourKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  const hour = date.getHours().toString().padStart(2, '0');
+  return `${year}-${month}-${day} ${hour}:00`;
+}
+
+/**
+ * Get local date key in YYYY-MM-DD format (using local timezone, not UTC).
+ */
+function getLocalDateKey(date: Date): string {
+  const year = date.getFullYear();
+  const month = (date.getMonth() + 1).toString().padStart(2, '0');
+  const day = date.getDate().toString().padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/**
  * Convert blocklist entries to SecurityFlag format.
  */
 function entriesToFlags(entries: BlocklistEntry[]): SecurityFlag[] {
@@ -221,64 +243,64 @@ export function useDashboardAnalytics(): DashboardAnalytics {
       : 0;
 
     // 24h transaction counts (group by hour) - COUNT of transactions, not volume
-    const hourlyCounts: Map<string, number> = new Map();
+    // Use full date+hour key to avoid collisions between same hour on different days
+    const hourlyCounts: Map<string, { displayTime: string; count: number }> = new Map();
     
-    // Initialize last 24 hours
+    // Initialize last 24 hours with full date+hour keys
     for (let i = 23; i >= 0; i--) {
       const date = new Date(Date.now() - i * 60 * 60 * 1000);
-      const label = `${date.getHours().toString().padStart(2, '0')}:00`;
-      hourlyCounts.set(label, 0);
+      const fullKey = getFullHourKey(date);
+      const displayTime = `${date.getHours().toString().padStart(2, '0')}:00`;
+      hourlyCounts.set(fullKey, { displayTime, count: 0 });
     }
 
-    // Count transactions per hour
+    // Count transactions per hour using full date+hour key
     transfers24hList.forEach(t => {
-      const hour = getHourLabel(t.created_at);
-      if (hourlyCounts.has(hour)) {
-        hourlyCounts.set(hour, (hourlyCounts.get(hour) || 0) + 1);
+      const transferDate = new Date(t.created_at);
+      const fullKey = getFullHourKey(transferDate);
+      if (hourlyCounts.has(fullKey)) {
+        const entry = hourlyCounts.get(fullKey)!;
+        hourlyCounts.set(fullKey, { ...entry, count: entry.count + 1 });
       }
     });
 
-    // Convert to array (show every 4th hour label for clarity)
+    // Convert to array for chart - XAxis uses interval={3} to show labels every 4 hours
     const volumeTimeSeries: VolumeDataPoint[] = Array.from(hourlyCounts.entries())
-      .map(([time, count], index) => ({
-        time: index % 4 === 0 ? time : '',
+      .map(([, { displayTime, count }]) => ({
+        time: displayTime,
+        fullTime: displayTime, // Same as time, used for tooltip
         volume: count,
       }));
 
     // Recent flags from blocklist
     const recentFlags = entriesToFlags(blocklistEntries);
 
-    // 7-day transaction counts by day of week
+    // 7-day transaction counts by actual date (using LOCAL dates, not UTC)
     const transfers7dList = transfers.filter(t => isWithinDays(t.created_at, 7));
-    const dailyCounts: Map<string, number> = new Map();
+    const dailyCounts: Map<string, { label: string; count: number }> = new Map();
     
-    // Initialize last 7 days (starting from 6 days ago to today)
-    const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+    // Initialize last 7 days with date-based keys (local YYYY-MM-DD format)
     for (let i = 6; i >= 0; i--) {
       const date = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
-      const label = daysOfWeek[date.getDay()];
-      // Use index to make keys unique
-      const key = `${label}-${i}`;
-      dailyCounts.set(key, 0);
+      const dateKey = getLocalDateKey(date);
+      const dayLabel = date.toLocaleDateString('en-US', { weekday: 'short' }); // "Mon", "Tue"
+      dailyCounts.set(dateKey, { label: dayLabel, count: 0 });
     }
 
-    // Count transfers per day
+    // Count transfers per day using local date keys
     transfers7dList.forEach(t => {
       const transferDate = new Date(t.created_at);
-      const dayDiff = Math.floor((Date.now() - transferDate.getTime()) / (24 * 60 * 60 * 1000));
-      if (dayDiff >= 0 && dayDiff <= 6) {
-        const label = daysOfWeek[transferDate.getDay()];
-        const key = `${label}-${dayDiff}`;
-        if (dailyCounts.has(key)) {
-          dailyCounts.set(key, (dailyCounts.get(key) || 0) + 1);
-        }
+      const dateKey = getLocalDateKey(transferDate);
+      if (dailyCounts.has(dateKey)) {
+        const entry = dailyCounts.get(dateKey)!;
+        dailyCounts.set(dateKey, { ...entry, count: entry.count + 1 });
       }
     });
 
-    // Convert to array for chart (Map preserves insertion order: oldest to newest)
-    const dailyTransactionCounts: AssetDistribution[] = Array.from(dailyCounts.entries())
-      .map(([key, count]) => ({
-        asset: key.split('-')[0], // Extract day name
+    // Convert to array for chart (oldest to newest)
+    const dailyTransactionCounts: AssetDistribution[] = Array.from(dailyCounts.values())
+      .map(({ label, count }) => ({
+        asset: label,
         volume: count,
       }));
 

@@ -49,8 +49,8 @@ interface VolumeChartProps {
 }
 
 function VolumeChart({ data }: VolumeChartProps) {
-  // Use live data if available, fallback to mock
-  const chartData = data.length > 0 ? data : mockAnalyticsData.volumeTimeSeries;
+  // Use data directly - should always have 24 data points from hook
+  const chartData = data;
 
   return (
     <div className="flex-1 min-w-0">
@@ -66,10 +66,11 @@ function VolumeChart({ data }: VolumeChartProps) {
               </linearGradient>
             </defs>
             <XAxis
-              dataKey="time"
+              dataKey="fullTime"
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#64748b', fontSize: 10 }}
+              interval={3}
             />
             <YAxis
               axisLine={false}
@@ -84,8 +85,20 @@ function VolumeChart({ data }: VolumeChartProps) {
                 border: '1px solid #1f2a3a',
                 borderRadius: '8px',
                 color: '#fff',
+                padding: '8px 12px',
               }}
-              formatter={(value) => value != null ? [Math.round(Number(value)), 'Transactions'] : null}
+              content={({ active, payload }) => {
+                if (active && payload && payload[0]) {
+                  const data = payload[0].payload;
+                  return (
+                    <div style={{ backgroundColor: '#111722', border: '1px solid #1f2a3a', borderRadius: '8px', padding: '8px 12px', color: '#fff' }}>
+                      <div style={{ fontWeight: 500 }}>{data.fullTime}</div>
+                      <div style={{ color: '#a78bfa' }}>{data.volume} transactions</div>
+                    </div>
+                  );
+                }
+                return null;
+              }}
             />
             <Area
               type="monotone"
@@ -93,6 +106,7 @@ function VolumeChart({ data }: VolumeChartProps) {
               stroke="#7c3aed"
               strokeWidth={2}
               fill={`url(#${PURPLE_GRADIENT_ID})`}
+              activeDot={{ r: 4, strokeWidth: 0 }}
             />
           </AreaChart>
         </ResponsiveContainer>

@@ -6,10 +6,12 @@ import type { AnalyticsData } from '@/types/analytics.types';
 
 export const mockAnalyticsData: AnalyticsData = {
   volumeTimeSeries: [
-    { time: '12 Feb', volume: 45000 },
-    { time: '24 Feb', volume: 72000 },
-    { time: '20 Nov', volume: 58000 },
-    { time: '30 Sep', volume: 95000 },
+    { time: '00:00', fullTime: '00:00', volume: 2 },
+    { time: '', fullTime: '04:00', volume: 1 },
+    { time: '08:00', fullTime: '08:00', volume: 5 },
+    { time: '', fullTime: '12:00', volume: 3 },
+    { time: '16:00', fullTime: '16:00', volume: 8 },
+    { time: '', fullTime: '20:00', volume: 4 },
   ],
   assetDistribution: [
     { asset: 'Mon', volume: 4.2 },

@@ -7,9 +7,11 @@
  * Single data point for the 24h transaction volume time series.
  */
 export interface VolumeDataPoint {
-  /** Time label (e.g., "12 Feb", "24 Feb") */
+  /** Time label for X-axis (may be empty for non-labeled points) */
   time: string;
-  /** Transaction volume in USD */
+  /** Full time label for tooltip (e.g., "14:00") */
+  fullTime: string;
+  /** Transaction count */
   volume: number;
 }
 
