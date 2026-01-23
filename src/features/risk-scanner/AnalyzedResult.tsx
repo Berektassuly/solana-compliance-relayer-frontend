@@ -175,19 +175,7 @@ export function AnalyzedResult({ result, onReset }: AnalyzedResultProps) {
         </div>
       </div>
 
-      {/* Reasoning */}
-      <div className="rounded-lg border border-border overflow-hidden">
-        <div className="px-4 py-2 bg-border/30 border-b border-border">
-          <span className="text-xs text-muted uppercase tracking-wide">
-            ANALYSIS DETAILS
-          </span>
-        </div>
-        <div className="p-4">
-          <p className="text-sm text-muted leading-relaxed">
-            &quot;{result.reasoning}&quot;
-          </p>
-        </div>
-      </div>
+
 
       {/* Per-source Breakdown */}
       <div className="rounded-lg border border-border p-4 space-y-2">

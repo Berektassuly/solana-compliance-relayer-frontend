@@ -55,7 +55,7 @@ export function RiskScanner() {
   }, []);
 
   return (
-    <div className="rounded-xl border border-border bg-panel p-6 space-y-6">
+    <div className="rounded-xl border border-border bg-panel p-6 space-y-6 min-h-[520px]">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="p-2 rounded-lg bg-primary/10">

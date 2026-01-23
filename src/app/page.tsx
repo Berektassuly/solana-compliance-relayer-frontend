@@ -18,15 +18,15 @@ export default function HomePage() {
             <Terminal />
           </div>
           
-          {/* Right Panel - Monitor */}
+          {/* Right Panel - Risk Scanner */}
           <div className="min-w-0">
-            <Monitor />
+            <RiskScanner />
           </div>
         </div>
 
-        {/* Risk Scanner Demo Section */}
-        <div className="max-w-2xl mx-auto">
-          <RiskScanner />
+        {/* Monitor Section - Full Width */}
+        <div>
+          <Monitor />
         </div>
       </main>
 
