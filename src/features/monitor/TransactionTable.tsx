@@ -55,33 +55,45 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
   }
 
   return (
-    <div className="overflow-x-auto">
+    <div className="flex flex-col">
       {retryError && (
         <div className="mb-4 p-3 bg-red-500/10 border border-red-500/20 rounded-lg text-red-400 text-sm">
           {retryError}
         </div>
       )}
-      <table className="w-full">
-        <thead>
-          <tr className="border-b border-border">
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider w-12">
-              Type
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
-              Recipient
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
-              Amount
-            </th>
-            <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider min-w-[280px]">
-              Status
-            </th>
-            <th className="px-2 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider w-20">
-              Actions
-            </th>
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-border/50">
+      <div className="overflow-hidden">
+        <table className="w-full table-fixed">
+          <thead className="bg-panel sticky top-0 z-10">
+            <tr className="border-b border-border">
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider w-[60px]">
+                Type
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider w-[140px]">
+                Recipient
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider w-[120px]">
+                Amount
+              </th>
+              <th className="px-4 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider">
+                Status
+              </th>
+              <th className="px-2 py-3 text-left text-xs font-medium text-muted uppercase tracking-wider w-[90px]">
+                Actions
+              </th>
+            </tr>
+          </thead>
+        </table>
+      </div>
+      <div className="overflow-y-auto max-h-[240px] scrollbar-thin scrollbar-thumb-border scrollbar-track-transparent">
+        <table className="w-full table-fixed">
+          <colgroup>
+            <col className="w-[60px]" />
+            <col className="w-[140px]" />
+            <col className="w-[120px]" />
+            <col />
+            <col className="w-[90px]" />
+          </colgroup>
+          <tbody className="divide-y divide-border/50">
           {transactions.map((tx, index) => {
             const isConfidential = tx.transfer_details.type === 'confidential';
             const amount =
@@ -172,8 +184,9 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
               </motion.tr>
             );
           })}
-        </tbody>
-      </table>
+          </tbody>
+        </table>
+      </div>
     </div>
   );
 }
