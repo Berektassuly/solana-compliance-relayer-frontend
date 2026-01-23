@@ -6,6 +6,7 @@
  */
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { ShieldAlert, ShieldX, ChevronDown } from 'lucide-react';
 import {
@@ -21,7 +22,8 @@ import {
   ResponsiveContainer,
   Cell,
 } from 'recharts';
-import type { SecurityFlag } from '@/types/analytics.types';
+import type { SecurityFlag, VolumeDataPoint, AssetDistribution } from '@/types/analytics.types';
+import { useDashboardAnalytics } from '@/hooks';
 import { mockAnalyticsData } from './mockAnalyticsData';
 
 // ============================================================================
@@ -31,27 +33,32 @@ import { mockAnalyticsData } from './mockAnalyticsData';
 const PURPLE_GRADIENT_ID = 'purpleGradient';
 const BAR_GRADIENT_ID = 'barGradient';
 
-// Risk score color thresholds
-function getRiskGaugeColor(score: number): string {
-  if (score <= 3) return '#22c55e'; // Green - Low risk
-  if (score <= 6) return '#eab308'; // Yellow - Medium risk
-  return '#ef4444'; // Red - High risk
+// Success rate color thresholds
+function getStatusColor(rate: number): string {
+  if (rate >= 90) return '#22c55e'; // Green - Excellent
+  if (rate >= 70) return '#eab308'; // Yellow - Warning
+  return '#ef4444'; // Red - Critical
 }
 
 // ============================================================================
 // Sub-components
 // ============================================================================
 
-function VolumeChart() {
-  const data = mockAnalyticsData.volumeTimeSeries;
+interface VolumeChartProps {
+  data: VolumeDataPoint[];
+}
+
+function VolumeChart({ data }: VolumeChartProps) {
+  // Use live data if available, fallback to mock
+  const chartData = data.length > 0 ? data : mockAnalyticsData.volumeTimeSeries;
 
   return (
     <div className="flex-1 min-w-0">
-      <h3 className="text-sm font-medium text-foreground mb-4">24h Transaction Volume</h3>
+      <h3 className="text-sm font-medium text-foreground mb-4">Transactions (24h)</h3>
       {/* FIX: Added w-full to ensure Recharts can calculate width */}
       <div className="h-32 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <AreaChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id={PURPLE_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#7c3aed" stopOpacity={0.6} />
@@ -68,7 +75,8 @@ function VolumeChart() {
               axisLine={false}
               tickLine={false}
               tick={{ fill: '#64748b', fontSize: 10 }}
-              tickFormatter={(value: number) => `${(value / 1000).toFixed(0)}k`}
+              tickFormatter={(value: number) => Math.round(value).toString()}
+              allowDecimals={false}
             />
             <Tooltip
               contentStyle={{
@@ -77,7 +85,7 @@ function VolumeChart() {
                 borderRadius: '8px',
                 color: '#fff',
               }}
-              formatter={(value) => value != null ? [`$${Number(value).toLocaleString()}`, 'Volume'] : null}
+              formatter={(value) => value != null ? [Math.round(Number(value)), 'Transactions'] : null}
             />
             <Area
               type="monotone"
@@ -93,16 +101,21 @@ function VolumeChart() {
   );
 }
 
-function AssetDistributionChart() {
-  const data = mockAnalyticsData.assetDistribution;
+interface AssetDistributionChartProps {
+  data: AssetDistribution[];
+}
+
+function AssetDistributionChart({ data }: AssetDistributionChartProps) {
+  // Use live data if available, fallback to mock
+  const chartData = data.length > 0 ? data : mockAnalyticsData.assetDistribution;
 
   return (
     <div className="flex-1 min-w-0">
-      <h3 className="text-sm font-medium text-foreground mb-4">Asset Distribution (Last 7 Days)</h3>
+      <h3 className="text-sm font-medium text-foreground mb-4">Transactions (Last 7 Days)</h3>
       {/* FIX: Added w-full to ensure Recharts can calculate width */}
       <div className="h-32 w-full">
         <ResponsiveContainer width="100%" height="100%">
-          <BarChart data={data} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
+          <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <defs>
               <linearGradient id={BAR_GRADIENT_ID} x1="0" y1="0" x2="0" y2="1">
                 <stop offset="0%" stopColor="#3b82f6" stopOpacity={1} />
@@ -127,10 +140,10 @@ function AssetDistributionChart() {
                 borderRadius: '8px',
                 color: '#fff',
               }}
-              formatter={(value) => value != null ? [`${Number(value).toFixed(1)}M`, 'Volume'] : null}
+              formatter={(value) => value != null ? [Number(value), 'Transactions'] : null}
             />
             <Bar dataKey="volume" radius={[4, 4, 0, 0]}>
-              {data.map((_, index) => (
+              {chartData.map((_, index) => (
                 <Cell key={`cell-${index}`} fill={`url(#${BAR_GRADIENT_ID})`} />
               ))}
             </Bar>
@@ -141,18 +154,20 @@ function AssetDistributionChart() {
   );
 }
 
-function RiskGauge() {
-  const { averageScore } = mockAnalyticsData.riskMetrics;
-  const percentage = (averageScore / 10) * 100;
-  const color = getRiskGaugeColor(averageScore);
+interface TransactionStatusGaugeProps {
+  successRate: number;
+}
+
+function TransactionStatusGauge({ successRate }: TransactionStatusGaugeProps) {
+  const color = getStatusColor(successRate);
 
   const gaugeData = [
-    { name: 'score', value: percentage, fill: color },
+    { name: 'rate', value: successRate, fill: color },
   ];
 
   return (
     <div className="flex-1 min-w-0">
-      <h3 className="text-sm font-medium text-foreground mb-4 uppercase tracking-wide">Risk Metrics</h3>
+      <h3 className="text-sm font-medium text-foreground mb-4 uppercase tracking-wide">Transaction Status</h3>
       <div className="flex items-center justify-center">
         {/* FIX: Keep relative and ensure width/height are defined */}
         <div className="relative h-32 w-32">
@@ -175,10 +190,10 @@ function RiskGauge() {
             </RadialBarChart>
           </ResponsiveContainer>
           <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <span className="text-xs text-muted">Average Risk</span>
-            <span className="text-xs text-muted">Score</span>
+            <span className="text-xs text-muted">Success</span>
+            <span className="text-xs text-muted">Rate</span>
             <span className="text-xl font-bold mt-1" style={{ color }}>
-              {averageScore.toFixed(1)}%
+              {successRate}%
             </span>
           </div>
         </div>
@@ -204,14 +219,19 @@ function FlagItem({ flag }: { flag: SecurityFlag }) {
   );
 }
 
-function RecentFlags() {
-  const flags = mockAnalyticsData.recentFlags;
+interface RecentFlagsProps {
+  flags: SecurityFlag[];
+}
+
+function RecentFlags({ flags }: RecentFlagsProps) {
+  // Use live data if available, fallback to mock
+  const displayFlags = flags.length > 0 ? flags : mockAnalyticsData.recentFlags;
 
   return (
     <div className="flex-1 min-w-0">
       <h3 className="text-sm font-medium text-foreground mb-4">Recent Flags</h3>
       <div className="space-y-1">
-        {flags.map((flag) => (
+        {displayFlags.map((flag) => (
           <FlagItem key={flag.id} flag={flag} />
         ))}
       </div>
@@ -228,6 +248,16 @@ function RecentFlags() {
 // ============================================================================
 
 export function AnalyticsOverview() {
+  // Prevent SSR rendering of charts which causes dimension warnings
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // Fetch live data from the analytics hook
+  const { volumeTimeSeries, dailyTransactionCounts, successRate, recentFlags } = useDashboardAnalytics();
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -245,14 +275,27 @@ export function AnalyticsOverview() {
         <div className="flex flex-col lg:flex-row">
           {/* Left Panel: Traffic & Volume */}
           <div className="flex-1 p-6 flex flex-col sm:flex-row gap-6 border-b lg:border-b-0 lg:border-r border-border">
-            <VolumeChart />
-            <AssetDistributionChart />
+            {isMounted ? (
+              <>
+                <VolumeChart data={volumeTimeSeries} />
+                <AssetDistributionChart data={dailyTransactionCounts} />
+              </>
+            ) : (
+              <>
+                <div className="flex-1 min-w-0 h-32 bg-panel-hover rounded animate-pulse" />
+                <div className="flex-1 min-w-0 h-32 bg-panel-hover rounded animate-pulse" />
+              </>
+            )}
           </div>
 
-          {/* Right Panel: Risk & Compliance */}
+          {/* Right Panel: Status & Compliance */}
           <div className="flex-1 p-6 flex flex-col sm:flex-row gap-6">
-            <RiskGauge />
-            <RecentFlags />
+            {isMounted ? (
+              <TransactionStatusGauge successRate={successRate} />
+            ) : (
+              <div className="flex-1 min-w-0 h-32 bg-panel-hover rounded animate-pulse" />
+            )}
+            <RecentFlags flags={recentFlags} />
           </div>
         </div>
       </div>

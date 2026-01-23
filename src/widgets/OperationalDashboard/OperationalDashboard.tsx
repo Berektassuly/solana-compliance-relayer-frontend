@@ -4,7 +4,7 @@
  */
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Activity, 
@@ -18,7 +18,8 @@ import {
   Shield,
 } from 'lucide-react';
 import { getHealth, type HealthResponse } from '@/shared/api';
-import { useTransferStore, useTransfersList } from '@/features/transfer/model/store';
+import { useTransferStore } from '@/features/transfer/model/store';
+import { useDashboardAnalytics } from '@/hooks';
 
 // ============================================================================
 // Metric Card Component
@@ -83,23 +84,15 @@ function HealthIndicator({ status, label }: { status: 'healthy' | 'degraded' | '
 // Compliance Overview Component
 // ============================================================================
 
-function ComplianceOverview() {
-  const transfers = useTransfersList();
-  
-  // FIX: Memoize stats to prevent recalculation on every render
-  const stats = useMemo(() => {
-    return transfers.reduce(
-      (acc, t) => {
-        const status = t.compliance_status || 'pending';
-        if (acc[status] !== undefined) {
-          acc[status]++;
-        }
-        return acc;
-      },
-      { approved: 0, rejected: 0, pending: 0 } as Record<string, number>
-    );
-  }, [transfers]);
-  
+interface ComplianceOverviewProps {
+  stats: {
+    approved: number;
+    rejected: number;
+    pending: number;
+  };
+}
+
+function ComplianceOverview({ stats }: ComplianceOverviewProps) {
   const total = stats.approved + stats.rejected + stats.pending;
   const approvalRate = total > 0 ? Math.round((stats.approved / total) * 100) : 0;
   
@@ -154,19 +147,17 @@ export function OperationalDashboard() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
   
-  const transfers = useTransfersList();
-  const { loadTransfers } = useTransferStore();
+  // Use the analytics hook for computed metrics
+  const {
+    transfers,
+    totalTransfers,
+    successRate,
+    avgLatencySeconds,
+    complianceBreakdown,
+    refresh: refreshAnalytics,
+  } = useDashboardAnalytics();
   
-  // FIX: Memoize these calculations to reduce render cost
-  const { successRate, confirmedCount, failedCount } = useMemo(() => {
-    const confirmed = transfers.filter(t => t.blockchain_status === 'confirmed').length;
-    const failed = transfers.filter(t => t.blockchain_status === 'failed').length;
-    const rate = confirmed + failed > 0
-      ? Math.round((confirmed / (confirmed + failed)) * 100)
-      : 100;
-      
-    return { successRate: rate, confirmedCount: confirmed, failedCount: failed };
-  }, [transfers]);
+  const { loadTransfers } = useTransferStore();
   
   // Fetch health on mount
   useEffect(() => {
@@ -222,7 +213,7 @@ export function OperationalDashboard() {
       <div className="grid grid-cols-3 gap-4">
         <MetricCard
           title="Total Transfers"
-          value={transfers.length}
+          value={totalTransfers}
           change="Last 24h"
           changeType="neutral"
           icon={<Activity className="h-4 w-4" />}
@@ -235,9 +226,8 @@ export function OperationalDashboard() {
         />
         <MetricCard
           title="Avg. Latency"
-          value="2.4s"
-          change="▼ 0.3s"
-          changeType="positive"
+          value={avgLatencySeconds > 0 ? `${avgLatencySeconds}s` : 'N/A'}
+          changeType={avgLatencySeconds <= 3 ? 'positive' : avgLatencySeconds <= 10 ? 'neutral' : 'negative'}
           icon={<Clock className="h-4 w-4" />}
         />
       </div>
@@ -271,7 +261,7 @@ export function OperationalDashboard() {
         </div>
         
         {/* Compliance Overview */}
-        <ComplianceOverview />
+        <ComplianceOverview stats={complianceBreakdown} />
       </div>
     </motion.div>
   );
