@@ -36,12 +36,13 @@
 
 ## Overview
 
-This is the official frontend interface for the Solana Compliance Relayer. It provides a DeFi-grade dashboard with two primary panels:
+This is the official frontend interface for the Solana Compliance Relayer. It provides a DeFi-grade dashboard with three primary sections:
 
-| Panel | Description |
-|-------|-------------|
+| Section | Description |
+|---------|-------------|
 | **Terminal** | Submit public or confidential transfers with client-side WASM signing |
 | **Monitor** | Real-time transaction tracking with status updates and retry functionality |
+| **Risk Scanner** | Interactive wallet compliance checker with animated analysis visualization |
 
 The application connects to the Rust backend via REST API and uses WebAssembly for secure client-side cryptographic operations.
 
@@ -62,8 +63,13 @@ The application connects to the Rust backend via REST API and uses WebAssembly f
 │                                  │              └───────────────────┘   │
 │                                  ▼                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
+│  │                       Risk Scanner                               │    │
+│  │  - Pre-flight compliance check    - Animated 3-step analysis    │    │
+│  └─────────────────────────────────────────────────────────────────┘    │
+│                                  │                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐    │
 │  │                     API Layer (services/)                       │    │
-│  │  - transfer-requests.ts    - blocklist.ts (Admin)               │    │
+│  │  - transfer-requests.ts  - risk-check.ts  - blocklist.ts        │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                  │                                      │
 └──────────────────────────────────┼──────────────────────────────────────┘
@@ -91,6 +97,7 @@ src/
 ├── features/               # Feature modules (Feature-Sliced Design)
 │   ├── terminal/           # Transfer form and mode switching
 │   ├── monitor/            # Transaction table and status badges
+│   ├── risk-scanner/       # Interactive wallet compliance checker
 │   ├── transfer/           # Transfer submission logic
 │   └── wallet/             # Wallet utilities
 ├── hooks/                  # Custom React hooks
@@ -100,6 +107,7 @@ src/
 │   └── wasm.ts             # WASM module loader
 ├── services/               # API layer
 │   ├── transfer-requests.ts # Transfer CRUD operations
+│   ├── risk-check.ts       # Wallet risk check API
 │   └── blocklist.ts        # Admin blocklist API
 ├── store/                  # Zustand state management
 └── types/                  # TypeScript definitions
@@ -111,6 +119,7 @@ src/
 
 | Feature | Description |
 |---------|-------------|
+| **Interactive Risk Scanner** | Pre-flight wallet compliance check with animated 3-step analysis |
 | **Client-Side WASM Signing** | Ed25519 signatures generated via Rust/WASM - private keys never leave the browser |
 | **Dual Transfer Modes** | Public (standard SPL) and Confidential (Token-2022 ElGamal) transfer support |
 | **Real-Time Monitoring** | 5-second polling with animated status transitions |
@@ -180,10 +189,26 @@ NEXT_PUBLIC_API_URL=https://your-backend.railway.app
 
 ### Dashboard (/)
 
-The main page with two-panel layout:
+The main page with three sections:
 
 - **Terminal Panel**: Submit transfers with asset selection, recipient input, and amount
 - **Monitor Panel**: View all transactions with status, retry failed transfers
+- **Risk Scanner**: Interactive wallet compliance checker with demo addresses
+
+#### Risk Scanner
+
+The Risk Scanner provides pre-flight compliance checking:
+
+| State | Description |
+|-------|-------------|
+| **Initial** | Address input with Base58 validation, quick-scan demo buttons |
+| **Scanning** | Animated 3-step progress (Blocklist → Range Protocol → Helius DAS) |
+| **Blocked** | Red alert with rejection reason |
+| **Analyzed** | Risk gauge (0-10), per-source breakdown, Explorer link |
+
+Demo addresses for testing:
+- Clean wallet: `HvwC9QSAzwEXkUkwqNNGhfNHoVqXJYfPvPZfQvJmHWcF`
+- Blocked wallet: `4oS78GPe66RqBduuAeiMFANf27FpmgXNwokZ3ocN4z1B`
 
 ### Admin (/admin)
 
