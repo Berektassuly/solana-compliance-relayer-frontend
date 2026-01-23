@@ -1,11 +1,10 @@
 /**
  * Operational Dashboard Widget
- * 
- * Displays service metrics, health status, and compliance overview
+ * * Displays service metrics, health status, and compliance overview
  */
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Activity, 
@@ -87,13 +86,19 @@ function HealthIndicator({ status, label }: { status: 'healthy' | 'degraded' | '
 function ComplianceOverview() {
   const transfers = useTransfersList();
   
-  const stats = transfers.reduce(
-    (acc, t) => {
-      acc[t.compliance_status]++;
-      return acc;
-    },
-    { approved: 0, rejected: 0, pending: 0 } as Record<string, number>
-  );
+  // FIX: Memoize stats to prevent recalculation on every render
+  const stats = useMemo(() => {
+    return transfers.reduce(
+      (acc, t) => {
+        const status = t.compliance_status || 'pending';
+        if (acc[status] !== undefined) {
+          acc[status]++;
+        }
+        return acc;
+      },
+      { approved: 0, rejected: 0, pending: 0 } as Record<string, number>
+    );
+  }, [transfers]);
   
   const total = stats.approved + stats.rejected + stats.pending;
   const approvalRate = total > 0 ? Math.round((stats.approved / total) * 100) : 0;
@@ -148,15 +153,20 @@ function ComplianceOverview() {
 export function OperationalDashboard() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  
   const transfers = useTransfersList();
   const { loadTransfers } = useTransferStore();
   
-  // Calculate metrics
-  const confirmedCount = transfers.filter(t => t.blockchain_status === 'confirmed').length;
-  const failedCount = transfers.filter(t => t.blockchain_status === 'failed').length;
-  const successRate = confirmedCount + failedCount > 0
-    ? Math.round((confirmedCount / (confirmedCount + failedCount)) * 100)
-    : 100;
+  // FIX: Memoize these calculations to reduce render cost
+  const { successRate, confirmedCount, failedCount } = useMemo(() => {
+    const confirmed = transfers.filter(t => t.blockchain_status === 'confirmed').length;
+    const failed = transfers.filter(t => t.blockchain_status === 'failed').length;
+    const rate = confirmed + failed > 0
+      ? Math.round((confirmed / (confirmed + failed)) * 100)
+      : 100;
+      
+    return { successRate: rate, confirmedCount: confirmed, failedCount: failed };
+  }, [transfers]);
   
   // Fetch health on mount
   useEffect(() => {
@@ -182,9 +192,10 @@ export function OperationalDashboard() {
   
   const handleRefresh = async () => {
     setIsRefreshing(true);
-    await Promise.all([
+    // Use allSettled to prevent UI lock if one request fails
+    await Promise.allSettled([
       loadTransfers(true),
-      getHealth().then(setHealth).catch(() => {}),
+      getHealth().then(setHealth),
     ]);
     setIsRefreshing(false);
   };

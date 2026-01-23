@@ -1,8 +1,8 @@
 /**
  * Transfer Store - Zustand store for managing transfer state
- * 
- * Uses React 19 patterns with Zustand 5 for optimal performance
+ * * Uses React 19 patterns with Zustand 5 for optimal performance
  */
+import { useMemo } from 'react'; // FIX: Import useMemo
 import { create } from 'zustand';
 import { subscribeWithSelector } from 'zustand/middleware';
 import type { 
@@ -220,6 +220,7 @@ export const useTransferStore = create<TransferState>()(
             }
           } catch {
             // Continue polling on error
+            // Potentially add exponential backoff here in production
           }
           
           await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL));
@@ -248,14 +249,20 @@ export const useTransferStore = create<TransferState>()(
 // ============================================================================
 
 /**
- * Get transfers as a sorted array (newest first)
+ * Get transfers as a sorted array (newest first).
+ * * FIX: Using useMemo prevents infinite re-render loops in components.
+ * Previously, this returned a fresh array reference on every render.
  */
 export function useTransfersList(): TransferRequest[] {
-  return useTransferStore((state) => 
-    Array.from(state.transfers.values()).sort(
+  // 1. Select the stable Map reference from the store
+  const transfersMap = useTransferStore((state) => state.transfers);
+
+  // 2. Memoize the transformation to Array
+  return useMemo(() => {
+    return Array.from(transfersMap.values()).sort(
       (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-    )
-  );
+    );
+  }, [transfersMap]);
 }
 
 /**
