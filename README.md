@@ -1,7 +1,5 @@
 <div align="center">
 
-<img src="public/assets/neon-logo.png" alt="Solana Relayer Logo" width="120" />
-
 # Solana Compliance Relayer Frontend
 
 ### Real-time dashboard for privacy-preserving Solana transfers with integrated compliance monitoring.
