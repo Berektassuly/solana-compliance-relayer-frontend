@@ -6,6 +6,7 @@ import { X, Scan } from 'lucide-react';
 
 import { SystemHealthBar } from '@/components/shared/SystemHealthBar';
 import { Footer } from '@/components/shared/Footer';
+import { AdminOverlay } from '@/components/dashboard/AdminOverlay';
 import { AnalyticsOverview } from '@/widgets/AnalyticsOverview';
 import { MetricsRow } from '@/widgets/MetricsRow';
 import { Terminal } from '@/features/terminal';
@@ -112,6 +113,7 @@ function SectionHeader({ title, children }: SectionHeaderProps) {
 
 export default function HomePage() {
   const [isRiskScannerOpen, setIsRiskScannerOpen] = useState(false);
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
 
   // Unified data hook - fetch once at page level
   const {
@@ -133,10 +135,18 @@ export default function HomePage() {
     setIsRiskScannerOpen(false);
   }, []);
 
+  const openAdmin = useCallback(() => {
+    setIsAdminOpen(true);
+  }, []);
+
+  const closeAdmin = useCallback(() => {
+    setIsAdminOpen(false);
+  }, []);
+
   return (
     <div className="min-h-screen flex flex-col bg-background">
       {/* Sticky System Health Header */}
-      <SystemHealthBar />
+      <SystemHealthBar onAdminClick={openAdmin} />
 
       <main className="flex-1 container mx-auto px-4 py-6 space-y-6">
         {/* ============================================================== */}
@@ -194,6 +204,12 @@ export default function HomePage() {
       <RiskScannerOverlay
         isOpen={isRiskScannerOpen}
         onClose={closeRiskScanner}
+      />
+
+      {/* Admin Overlay */}
+      <AdminOverlay
+        isOpen={isAdminOpen}
+        onClose={closeAdmin}
       />
     </div>
   );

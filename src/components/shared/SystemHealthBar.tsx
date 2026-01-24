@@ -1,10 +1,14 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, AlertCircle, XCircle, Cpu, Database, Globe } from 'lucide-react';
+import { CheckCircle2, AlertCircle, XCircle, Cpu, Database, Globe, Settings } from 'lucide-react';
 import { getHealth, type HealthResponse } from '@/shared/api';
 
 type HealthStatus = 'healthy' | 'degraded' | 'unhealthy';
+
+interface SystemHealthBarProps {
+  onAdminClick?: () => void;
+}
 
 interface HealthIndicatorProps {
   status: HealthStatus;
@@ -30,7 +34,7 @@ function HealthIndicator({ status, label, icon }: HealthIndicatorProps) {
   );
 }
 
-export function SystemHealthBar() {
+export function SystemHealthBar({ onAdminClick }: SystemHealthBarProps = {}) {
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
   useEffect(() => {
@@ -58,7 +62,7 @@ export function SystemHealthBar() {
             <span className="text-xs text-muted-dark">v{health?.version || '0.3.0'}</span>
           </div>
 
-          {/* Right - Health Indicators */}
+          {/* Right - Health Indicators + Admin */}
           <div className="flex items-center gap-4 md:gap-6">
             <HealthIndicator
               status={health?.database || 'healthy'}
@@ -75,6 +79,20 @@ export function SystemHealthBar() {
               label="Range API"
               icon={<Cpu className="h-3 w-3" />}
             />
+            
+            {/* Admin Toggle */}
+            {onAdminClick && (
+              <>
+                <div className="h-4 w-px bg-border hidden md:block" />
+                <button
+                  onClick={onAdminClick}
+                  className="p-1.5 rounded-md hover:bg-panel-hover transition-colors group"
+                  title="Admin Panel"
+                >
+                  <Settings className="h-4 w-4 text-muted group-hover:text-primary transition-colors" />
+                </button>
+              </>
+            )}
           </div>
         </div>
       </div>
