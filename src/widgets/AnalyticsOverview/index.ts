@@ -1,1 +1,1 @@
-export { AnalyticsOverview } from './AnalyticsOverview';
+export { AnalyticsOverview, type AnalyticsOverviewProps } from './AnalyticsOverview';

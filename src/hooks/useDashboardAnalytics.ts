@@ -55,7 +55,6 @@ export interface DashboardAnalytics {
 
 const POLLING_INTERVAL_MS = 10_000; // 10 seconds
 const FETCH_LIMIT = 100; // Fetch up to 100 transfers for analysis
-const LAMPORTS_PER_SOL = 1_000_000_000;
 
 // ============================================================================
 // Utility Functions
@@ -91,23 +90,6 @@ function isWithinDays(dateStr: string, days: number): boolean {
 }
 
 /**
- * Get day of week label (e.g., "Mon", "Tue").
- */
-function getDayLabel(dateStr: string): string {
-  const days = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
-  const date = new Date(dateStr);
-  return days[date.getDay()];
-}
-
-/**
- * Get hour label for a date (e.g., "14:00").
- */
-function getHourLabel(dateStr: string): string {
-  const date = new Date(dateStr);
-  return `${date.getHours().toString().padStart(2, '0')}:00`;
-}
-
-/**
  * Get full date+hour key for unique hourly grouping (e.g., "2026-01-24 14:00").
  * This prevents collisions between the same hour on different days.
  */
@@ -140,16 +122,6 @@ function entriesToFlags(entries: BlocklistEntry[]): SecurityFlag[] {
     severity: entry.reason.toLowerCase().includes('critical') ? 'critical' as const : 'high' as const,
     timestamp: new Date().toISOString(),
   }));
-}
-
-/**
- * Get public transfer amount in lamports, or 0 for confidential.
- */
-function getAmount(transfer: TransferRequest): number {
-  if (transfer.transfer_details.type === 'public') {
-    return transfer.transfer_details.amount;
-  }
-  return 0;
 }
 
 // ============================================================================

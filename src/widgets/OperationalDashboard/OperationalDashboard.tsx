@@ -149,12 +149,10 @@ export function OperationalDashboard() {
   
   // Use the analytics hook for computed metrics
   const {
-    transfers,
     totalTransfers,
     successRate,
     avgLatencySeconds,
     complianceBreakdown,
-    refresh: refreshAnalytics,
   } = useDashboardAnalytics();
   
   const { loadTransfers } = useTransferStore();

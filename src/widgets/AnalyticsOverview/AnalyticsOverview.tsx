@@ -261,7 +261,26 @@ function RecentFlags({ flags }: RecentFlagsProps) {
 // Main Component
 // ============================================================================
 
-export function AnalyticsOverview() {
+export interface AnalyticsOverviewProps {
+  /** Volume time series data (24h) - if not provided, uses internal hook */
+  volumeTimeSeries?: VolumeDataPoint[];
+  /** Daily transaction counts (7d) - if not provided, uses internal hook */
+  dailyTransactionCounts?: AssetDistribution[];
+  /** Success rate percentage - if not provided, uses internal hook */
+  successRate?: number;
+  /** Recent security flags - if not provided, uses internal hook */
+  recentFlags?: SecurityFlag[];
+  /** Whether to use compact mode (smaller padding) */
+  compact?: boolean;
+}
+
+export function AnalyticsOverview({
+  volumeTimeSeries: propVolumeTimeSeries,
+  dailyTransactionCounts: propDailyTransactionCounts,
+  successRate: propSuccessRate,
+  recentFlags: propRecentFlags,
+  compact = false,
+}: AnalyticsOverviewProps = {}) {
   // Prevent SSR rendering of charts which causes dimension warnings
   const [isMounted, setIsMounted] = useState(false);
   
@@ -269,8 +288,14 @@ export function AnalyticsOverview() {
     setIsMounted(true);
   }, []);
 
-  // Fetch live data from the analytics hook
-  const { volumeTimeSeries, dailyTransactionCounts, successRate, recentFlags } = useDashboardAnalytics();
+  // Fetch live data from the analytics hook (only if props not provided)
+  const hookData = useDashboardAnalytics();
+  
+  // Use props if provided, otherwise fall back to hook data
+  const volumeTimeSeries = propVolumeTimeSeries ?? hookData.volumeTimeSeries;
+  const dailyTransactionCounts = propDailyTransactionCounts ?? hookData.dailyTransactionCounts;
+  const successRate = propSuccessRate ?? hookData.successRate;
+  const recentFlags = propRecentFlags ?? hookData.recentFlags;
 
   return (
     <motion.div
@@ -279,16 +304,16 @@ export function AnalyticsOverview() {
       transition={{ duration: 0.4, ease: 'easeOut' }}
       className="w-full"
     >
-      {/* Header */}
+      {/* Header
       <h2 className="text-xs font-semibold text-muted uppercase tracking-widest mb-4">
         Analytics Overview
       </h2>
-
+      */}
       {/* Main Container */}
       <div className="bg-panel border border-border rounded-xl overflow-hidden shadow-lg shadow-primary/5">
         <div className="flex flex-col lg:flex-row">
           {/* Left Panel: Traffic & Volume */}
-          <div className="flex-1 p-6 flex flex-col sm:flex-row gap-6 border-b lg:border-b-0 lg:border-r border-border">
+          <div className={`flex-1 ${compact ? 'p-4' : 'p-6'} flex flex-col sm:flex-row gap-6 border-b lg:border-b-0 lg:border-r border-border`}>
             {isMounted ? (
               <>
                 <VolumeChart data={volumeTimeSeries} />
@@ -303,7 +328,7 @@ export function AnalyticsOverview() {
           </div>
 
           {/* Right Panel: Status & Compliance */}
-          <div className="flex-1 p-6 flex flex-col sm:flex-row gap-6">
+          <div className={`flex-1 ${compact ? 'p-4' : 'p-6'} flex flex-col sm:flex-row gap-6`}>
             {isMounted ? (
               <TransactionStatusGauge successRate={successRate} />
             ) : (
