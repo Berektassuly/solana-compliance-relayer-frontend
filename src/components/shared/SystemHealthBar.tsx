@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Image from 'next/image';
 import { CheckCircle2, AlertCircle, XCircle, Cpu, Database, Globe, Settings } from 'lucide-react';
 import { getHealth, type HealthResponse } from '@/shared/api';
 
@@ -56,10 +57,18 @@ export function SystemHealthBar({ onAdminClick }: SystemHealthBarProps = {}) {
     <div className="sticky top-0 z-50 w-full bg-panel/95 backdrop-blur-sm border-b border-border">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-10">
-          {/* Left - System Health Label */}
-          <div className="flex items-center gap-2">
-            <span className="text-xs font-medium text-muted uppercase tracking-wide">System Health</span>
-            <span className="text-xs text-muted-dark">v{health?.version || '0.3.0'}</span>
+          {/* Left - Logo and Title */}
+          <div className="flex items-center gap-3">
+            <Image
+              src="/assets/neon-logo.png"
+              alt="Relayer Logo"
+              width={40}
+              height={40}
+              className="object-contain mix-blend-screen"
+            />
+            <h1 className="text-sm font-bold text-slate-200 tracking-wider uppercase">
+              Solana Relayer
+            </h1>
           </div>
 
           {/* Right - Health Indicators + Admin */}

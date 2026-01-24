@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
+import Image from 'next/image';
 import { Activity, Shield, Zap, Loader2, Check, AlertCircle } from 'lucide-react';
 import { generateKeypair, generatePublicTransfer, generateRandomAddress } from '@/lib/wasm';
 import { API_BASE_URL } from '@/lib/constants';
@@ -63,9 +64,18 @@ export function Header() {
   return (
     <header className="flex items-center justify-between px-6 py-4 border-b border-border bg-panel/50 backdrop-blur-sm">
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-semibold text-foreground tracking-tight">
-          Relayer
-        </h1>
+        <div className="flex items-center gap-3">
+          <Image
+            src="/assets/neon-logo.png"
+            alt="Relayer Logo"
+            width={40}
+            height={40}
+            className="object-contain"
+          />
+          <h1 className="text-xl font-bold text-slate-200 tracking-wider uppercase">
+            Solana Relayer
+          </h1>
+        </div>
 
         {/* Generate Public Button */}
         <button
