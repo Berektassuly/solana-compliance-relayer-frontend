@@ -53,10 +53,10 @@ function VolumeChart({ data }: VolumeChartProps) {
   const chartData = data;
 
   return (
-    <div className="flex-1 min-w-0">
+    <div className="flex-1 min-w-0 h-full flex flex-col">
       <h3 className="text-sm font-medium text-foreground mb-4">Transactions (24h)</h3>
       {/* FIX: Added w-full to ensure Recharts can calculate width */}
-      <div className="h-32 w-full">
+      <div className="flex-1 min-h-[8rem] w-full flex items-center">
         <ResponsiveContainer width="100%" height="100%">
           <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <defs>
@@ -124,10 +124,10 @@ function AssetDistributionChart({ data }: AssetDistributionChartProps) {
   const chartData = data.length > 0 ? data : mockAnalyticsData.assetDistribution;
 
   return (
-    <div className="flex-1 min-w-0">
+    <div className="flex-1 min-w-0 h-full flex flex-col">
       <h3 className="text-sm font-medium text-foreground mb-4">Transactions (Last 7 Days)</h3>
       {/* FIX: Added w-full to ensure Recharts can calculate width */}
-      <div className="h-32 w-full">
+      <div className="flex-1 min-h-[8rem] w-full flex items-center">
         <ResponsiveContainer width="100%" height="100%">
           <BarChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
             <defs>
@@ -180,9 +180,9 @@ function TransactionStatusGauge({ successRate }: TransactionStatusGaugeProps) {
   ];
 
   return (
-    <div className="flex-1 min-w-0">
+    <div className="flex-1 min-w-0 h-full flex flex-col">
       <h3 className="text-sm font-medium text-foreground mb-4 uppercase tracking-wide">Transaction Status</h3>
-      <div className="flex items-center justify-center">
+      <div className="flex-1 flex items-center justify-center">
         {/* FIX: Keep relative and ensure width/height are defined */}
         <div className="relative h-32 w-32">
           <ResponsiveContainer width="100%" height="100%">
@@ -242,9 +242,9 @@ function RecentFlags({ flags }: RecentFlagsProps) {
   const displayFlags = flags.length > 0 ? flags : mockAnalyticsData.recentFlags;
 
   return (
-    <div className="flex-1 min-w-0">
+    <div className="flex-1 min-w-0 h-full flex flex-col">
       <h3 className="text-sm font-medium text-foreground mb-4">Recent Blocklist Flags</h3>
-      <div className="space-y-1">
+      <div className="flex-1 space-y-1">
         {displayFlags.map((flag) => (
           <FlagItem key={flag.id} flag={flag} />
         ))}
@@ -311,9 +311,9 @@ export function AnalyticsOverview({
       */}
       {/* Main Container */}
       <div className="bg-panel border border-border rounded-xl overflow-hidden shadow-lg shadow-primary/5">
-        <div className="flex flex-col lg:flex-row">
+        <div className="flex flex-col lg:flex-row lg:items-stretch">
           {/* Left Panel: Traffic & Volume */}
-          <div className={`flex-1 ${compact ? 'p-4' : 'p-6'} flex flex-col sm:flex-row gap-6 border-b lg:border-b-0 lg:border-r border-border`}>
+          <div className={`flex-1 ${compact ? 'p-4' : 'p-6'} flex flex-col sm:flex-row sm:items-stretch gap-6 border-b lg:border-b-0 lg:border-r border-border`}>
             {isMounted ? (
               <>
                 <VolumeChart data={volumeTimeSeries} />
@@ -328,7 +328,7 @@ export function AnalyticsOverview({
           </div>
 
           {/* Right Panel: Status & Compliance */}
-          <div className={`flex-1 ${compact ? 'p-4' : 'p-6'} flex flex-col sm:flex-row gap-6`}>
+          <div className={`flex-1 ${compact ? 'p-4' : 'p-6'} flex flex-col sm:flex-row sm:items-stretch gap-6`}>
             {isMounted ? (
               <TransactionStatusGauge successRate={successRate} />
             ) : (
