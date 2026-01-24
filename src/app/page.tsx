@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Scan } from 'lucide-react';
+import { X, Scan, Zap, Loader2, Check, AlertCircle } from 'lucide-react';
 
 import { SystemHealthBar } from '@/components/shared/SystemHealthBar';
 import { Footer } from '@/components/shared/Footer';
@@ -13,6 +13,8 @@ import { Terminal } from '@/features/terminal';
 import { Monitor } from '@/features/monitor';
 import { RiskScanner } from '@/features/risk-scanner';
 import { useDashboardAnalytics } from '@/hooks';
+import { generateKeypair, generatePublicTransfer, generateRandomAddress } from '@/lib/wasm';
+import { API_BASE_URL } from '@/lib/constants';
 
 // ============================================================================
 // Risk Scanner Overlay Component
@@ -88,6 +90,67 @@ function ScannerToggle({ onClick }: ScannerToggleProps) {
 }
 
 // ============================================================================
+// Generate Public Toggle Button
+// ============================================================================
+
+type ToastState = {
+  type: 'success' | 'error' | 'idle';
+  message: string;
+};
+
+interface GeneratePublicToggleProps {
+  isGenerating: boolean;
+  toast: ToastState;
+  onClick: () => void;
+}
+
+function GeneratePublicToggle({ isGenerating, toast, onClick }: GeneratePublicToggleProps) {
+  return (
+    <div className="flex items-center gap-2">
+      <motion.button
+        onClick={onClick}
+        disabled={isGenerating}
+        whileHover={{ scale: 1.02 }}
+        whileTap={{ scale: 0.98 }}
+        className="flex items-center gap-2 px-4 py-2 rounded-lg bg-accent/10 border border-accent/30 text-accent hover:bg-accent/20 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        {isGenerating ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : (
+          <Zap className="h-4 w-4" />
+        )}
+        <span className="text-sm font-medium">
+          {isGenerating ? 'Generating...' : 'Generate Public'}
+        </span>
+      </motion.button>
+
+      {/* Toast notification */}
+      <AnimatePresence>
+        {toast.type !== 'idle' && (
+          <motion.div
+            initial={{ opacity: 0, x: -10 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -10 }}
+            className={`flex items-center gap-2 px-3 py-1.5 text-sm rounded-lg ${
+              toast.type === 'success'
+                ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                : 'bg-red-500/10 text-red-400 border border-red-500/20'
+            }`}
+          >
+            {toast.type === 'success' ? (
+              <Check className="h-4 w-4" />
+            ) : (
+              <AlertCircle className="h-4 w-4" />
+            )}
+            {toast.message}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
+// ============================================================================
 // Section Header Component
 // ============================================================================
 
@@ -114,6 +177,8 @@ function SectionHeader({ title, children }: SectionHeaderProps) {
 export default function HomePage() {
   const [isRiskScannerOpen, setIsRiskScannerOpen] = useState(false);
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [toast, setToast] = useState<ToastState>({ type: 'idle', message: '' });
 
   // Unified data hook - fetch once at page level
   const {
@@ -141,6 +206,52 @@ export default function HomePage() {
 
   const closeAdmin = useCallback(() => {
     setIsAdminOpen(false);
+  }, []);
+
+  const handleGeneratePublic = useCallback(async () => {
+    setIsGenerating(true);
+    setToast({ type: 'idle', message: '' });
+
+    try {
+      // 1. Generate a new keypair
+      const keypair = await generateKeypair();
+
+      // 2. Generate a random destination address
+      const toAddress = await generateRandomAddress();
+
+      // 3. Generate the signed transfer request (1 SOL = 1e9 lamports)
+      const transferResult = await generatePublicTransfer(
+        keypair.secret_key,
+        toAddress,
+        1_000_000_000, // 1 SOL
+        undefined // Native SOL, no token mint
+      );
+
+      // 4. Submit to the API
+      const response = await fetch(`${API_BASE_URL}/transfer-requests`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: transferResult.request_json,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: { message: 'Request failed' } }));
+        throw new Error(errorData.error?.message || `HTTP ${response.status}`);
+      }
+
+      setToast({ type: 'success', message: 'Transfer submitted!' });
+
+      // Clear toast after 3 seconds
+      setTimeout(() => setToast({ type: 'idle', message: '' }), 3000);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      setToast({ type: 'error', message });
+
+      // Clear error toast after 5 seconds
+      setTimeout(() => setToast({ type: 'idle', message: '' }), 5000);
+    } finally {
+      setIsGenerating(false);
+    }
   }, []);
 
   return (
@@ -181,7 +292,14 @@ export default function HomePage() {
         {/* ============================================================== */}
         <section>
           <SectionHeader title="Execution & Monitoring">
-            <ScannerToggle onClick={openRiskScanner} />
+            <div className="flex items-center gap-3">
+              <GeneratePublicToggle
+                isGenerating={isGenerating}
+                toast={toast}
+                onClick={handleGeneratePublic}
+              />
+              <ScannerToggle onClick={openRiskScanner} />
+            </div>
           </SectionHeader>
 
           <div className="grid grid-cols-1 lg:grid-cols-[1fr_2fr] gap-6">

@@ -182,23 +182,23 @@ function TransactionStatusGauge({ successRate }: TransactionStatusGaugeProps) {
   return (
     <div className="flex-1 min-w-0 h-full flex flex-col">
       <h3 className="text-sm font-medium text-foreground mb-4 uppercase tracking-wide">Transaction Status</h3>
-      <div className="flex-1 flex items-center justify-center">
-        {/* FIX: Keep relative and ensure width/height are defined */}
-        <div className="relative h-32 w-32">
+      <div className="flex-1 flex items-center justify-center p-4">
+        {/* Upscaled gauge container with breathing room */}
+        <div className="relative h-50 w-50">
           <ResponsiveContainer width="100%" height="100%">
             <RadialBarChart
               cx="50%"
               cy="50%"
               innerRadius="70%"
               outerRadius="100%"
-              barSize={10}
+              barSize={13}
               data={gaugeData}
               startAngle={180}
               endAngle={0}
             >
               <RadialBar
                 dataKey="value"
-                cornerRadius={5}
+                cornerRadius={6}
                 background={{ fill: '#1f2a3a' }}
               />
             </RadialBarChart>
@@ -206,7 +206,7 @@ function TransactionStatusGauge({ successRate }: TransactionStatusGaugeProps) {
           <div className="absolute inset-0 flex flex-col items-center justify-center">
             <span className="text-xs text-muted">Success</span>
             <span className="text-xs text-muted">Rate</span>
-            <span className="text-xl font-bold mt-1" style={{ color }}>
+            <span className="text-3xl font-bold mt-1" style={{ color }}>
               {successRate}%
             </span>
           </div>
