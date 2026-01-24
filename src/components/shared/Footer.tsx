@@ -9,9 +9,9 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-4">
           {/* Left - Brand & Copyright */}
           <div className="flex items-center gap-2 text-sm">
-            <span className="font-semibold text-foreground">Relayer</span>
+            <span className="font-semibold text-foreground">Berektassuly</span>
             <span className="text-muted-dark">|</span>
-            <span className="text-muted">© 2026 Relayer. All rights reserved.</span>
+            <span className="text-muted">© 2026 Solana Compliance Relayer. All rights reserved.</span>
           </div>
 
           {/* Center - Quick Links */}
