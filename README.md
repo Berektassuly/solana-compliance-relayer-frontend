@@ -66,7 +66,7 @@ The application connects to the Rust backend via REST API and uses WebAssembly f
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
 │  │                    AnalyticsOverview Widget                     │    │
-│  │  24h Volume Chart │ 7-Day Bar Chart │ Success Gauge │ Flags    │    │
+│  │  24h Volume Chart │ 7-Day Bar Chart │ Success Gauge │ Flags     │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
@@ -88,7 +88,7 @@ The application connects to the Rust backend via REST API and uses WebAssembly f
 │                                  │                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
 │  │                     API Layer (services/)                       │    │
-│  │  transfer-requests • risk-check • blocklist • api-client • transfer │
+│  │transfer-requests • risk-check • blocklist • api-client • transfer    │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                  │                                      │
 └──────────────────────────────────┼──────────────────────────────────────┘
