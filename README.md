@@ -77,7 +77,7 @@ The application connects to the Rust backend via REST API and uses WebAssembly f
 │  ┌─────────────────┐    ┌──────────────────┐    ┌───────────────────┐   │
 │  │  Terminal Panel │    │  WASM Signer     │    │   Monitor Panel   │   │
 │  │  - Public Mode  │───>│  (Ed25519-dalek) │    │   - Status Table  │   │
-│  │  - Confidential │    │  - Client-side   │    │   - 5s Polling    │   │
+│  │  - Confidential │    │  - Client-side   │    │   - 3s Polling    │   │
 │  └─────────────────┘    └────────┬─────────┘    │   - Retry Action  │   │
 │                                  │              └───────────────────┘   │
 │                                  ▼                                      │
@@ -88,7 +88,7 @@ The application connects to the Rust backend via REST API and uses WebAssembly f
 │                                  │                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
 │  │                     API Layer (services/)                       │    │
-│  │  transfer-requests.ts  •  risk-check.ts  •  blocklist.ts        │    │
+│  │  transfer-requests • risk-check • blocklist • api-client • transfer │
 │  └─────────────────────────────────────────────────────────────────┘    │
 │                                  │                                      │
 └──────────────────────────────────┼──────────────────────────────────────┘
@@ -114,7 +114,7 @@ src/
 │   ├── (landing)/          # Landing page route group
 │   │   └── page.tsx
 │   ├── globals.css         # Tailwind v4 configuration
-│   └── layout.tsx          # Root layout with providers
+│   └── layout.tsx          # Root layout
 ├── components/             # Shared UI components
 │   ├── ui/                 # Button, Input, Select primitives
 │   ├── shared/             # Header, Footer, SystemHealthBar
@@ -137,7 +137,9 @@ src/
 │   ├── utils.ts            # Helper functions (cn, formatAddress)
 │   └── wasm.ts             # WASM module loader
 ├── services/               # API layer
+│   ├── api-client.ts       # Base API client (optional)
 │   ├── transfer-requests.ts # Transfer CRUD operations
+│   ├── transfer.ts         # Transfer submission helpers
 │   ├── risk-check.ts       # Wallet risk check API
 │   ├── blocklist.ts        # Admin blocklist API
 │   └── transactions.ts     # Transaction queries
@@ -145,12 +147,14 @@ src/
 │   ├── api/                # Centralized API client
 │   └── lib/                # Notifications, wallet utilities
 ├── store/                  # Global Zustand stores
-│   └── useUIStore.ts       # UI state management
+│   └── useUIStore.ts       # UI state (transfer mode, transactions, loading)
 └── types/                  # TypeScript definitions
     ├── analytics.types.ts  # Analytics data types
     ├── transaction.ts      # Transaction types
     └── transfer-request.ts # Transfer request types
 ```
+
+**Zustand stores:** Beyond `store/useUIStore`, feature-level stores live in `features/transfer/model/store.ts` (`useTransferStore` — transfer CRUD, polling) and `features/wallet/model/store.ts` (`useWalletStore` — connection, compliance tier, signing).
 
 ---
 
@@ -163,7 +167,7 @@ src/
 | **Interactive Risk Scanner** | Pre-flight wallet compliance check with animated 3-step analysis |
 | **Client-Side WASM Signing** | Ed25519 signatures generated via Rust/WASM - private keys never leave the browser |
 | **Dual Transfer Modes** | Public (standard SPL) and Confidential (Token-2022 ElGamal) transfer support |
-| **Real-Time Monitoring** | 5-second polling with animated status transitions |
+| **Real-Time Monitoring** | 3-second transfer-status polling with animated status transitions |
 | **System Health Bar** | Sticky header with branded logo, database/blockchain/API health indicators |
 | **Admin Overlay** | Slide-in panel for blocklist management |
 | **Dark Theme** | Professional dark navy UI with glassmorphism effects |
@@ -260,6 +264,7 @@ Blocklist management interface:
 | **Add Address** | Block a wallet address with reason |
 | **View Blocklist** | Table of all blocked addresses |
 | **Remove Address** | Unblock addresses, allowing retries of previously rejected transfers |
+| **Admin Key** | Optional password input; operations may require server-side authentication |
 
 ---
 
@@ -339,10 +344,13 @@ cargo install wasm-pack
 cd wasm
 wasm-pack build --target web --out-dir pkg
 
-# Copy to public folder
+# Copy to public folder (runtime loader fetches from /wasm/ via fetch, not webpack)
 cp pkg/solana_transfer_wasm_bg.wasm ../public/wasm/
 cp pkg/solana_transfer_wasm_bg.js ../public/wasm/
 ```
+
+The frontend loads WASM via **`src/lib/wasm.ts`**: it fetches the JS and WASM from `/wasm/` at runtime.  
+`next.config` webpack WASM rules exist for potential bundling; the current pipeline uses manual copy + fetch.
 
 ### Usage
 
@@ -361,23 +369,35 @@ const transfer = await generatePublicTransfer(
 
 ## CSS Architecture
 
-This project uses Tailwind CSS v4 with CSS-first configuration.
+This project uses **Tailwind CSS v4** with theme defined in `tailwind.config.ts`.  
+`globals.css` imports Tailwind via `@import "tailwindcss"` and `@config "../../tailwind.config.ts"`.  
+PostCSS uses `@tailwindcss/postcss` and `autoprefixer`.
 
 ### Theme Configuration
 
 ```typescript
-// tailwind.config.ts
-colors: {
-  background: "#0b0f14",
-  panel: "#111722",
-  primary: {
-    DEFAULT: "#7c3aed",
-    dark: "#5b21b6",
-  },
-  status: {
-    pending: "#eab308",
-    confirmed: "#22c55e",
-    failed: "#ef4444",
+// tailwind.config.ts (extract)
+theme: {
+  extend: {
+    colors: {
+      background: "#0b0f14",
+      panel: "#111722",
+      "panel-hover": "#1a2332",
+      border: "#1f2a3a",
+      primary: {
+        DEFAULT: "#7c3aed",
+        dark: "#5b21b6",
+        light: "#a78bfa",
+      },
+      status: {
+        pending: "#eab308",
+        confirmed: "#22c55e",
+        failed: "#ef4444",
+      },
+      foreground: "#ffffff",
+      muted: "#94a3b8",
+    },
+    // ...
   },
 }
 ```
@@ -425,9 +445,13 @@ If port 3000 is occupied, Next.js automatically selects the next available port.
 
 Ensure WASM files exist in `public/wasm/` directory. If missing, rebuild the WASM module.
 
+### API / Backend Connection
+
+`NEXT_PUBLIC_API_URL` is the only required env var. It is used by `lib/constants` (default `http://localhost:8000`) and `shared/api/client` (default `http://localhost:3001`). Set it explicitly in `.env.local` so all API calls target the same backend.
+
 ### Recharts SSR Warnings
 
-The application uses client-side mounting detection to prevent Recharts dimension warnings during SSR.
+Charts use `'use client'` and `ResponsiveContainer` with `width="100%"` so Recharts can compute dimensions on the client and avoid SSR warnings.
 
 ---
 
