@@ -15,6 +15,7 @@ import { RiskScanner } from '@/features/risk-scanner';
 import { useDashboardAnalytics } from '@/hooks';
 import { generateKeypair, generatePublicTransfer, generateRandomAddress } from '@/lib/wasm';
 import { API_BASE_URL } from '@/lib/constants';
+import { v7 as uuidv7 } from 'uuid';
 
 // ============================================================================
 // Risk Scanner Overlay Component
@@ -219,18 +220,25 @@ export default function HomePage() {
       // 2. Generate a random destination address
       const toAddress = await generateRandomAddress();
 
-      // 3. Generate the signed transfer request (1 SOL = 1e9 lamports)
+      // 3. Generate nonce for v2 API (replay protection / idempotency)
+      const nonce = uuidv7();
+
+      // 4. Generate the signed transfer request (1 SOL = 1e9 lamports)
       const transferResult = await generatePublicTransfer(
         keypair.secret_key,
         toAddress,
         1_000_000_000, // 1 SOL
-        undefined // Native SOL, no token mint
+        undefined, // Native SOL, no token mint
+        nonce
       );
 
-      // 4. Submit to the API
+      // 5. Submit to the API (Idempotency-Key must match nonce)
       const response = await fetch(`${API_BASE_URL}/transfer-requests`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Idempotency-Key': nonce,
+        },
         body: transferResult.request_json,
       });
 
