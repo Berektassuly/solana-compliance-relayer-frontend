@@ -31,6 +31,8 @@ pub struct SubmitTransferRequest {
     pub transfer_details: TransferDetails,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub token_mint: Option<String>,
+    /// UUID nonce for replay protection and idempotency
+    pub nonce: String,
     pub signature: String,
 }
 
@@ -52,6 +54,8 @@ pub struct TransferResult {
     pub from_address: String,
     /// The to_address used
     pub to_address: String,
+    /// The UUID nonce used for this request
+    pub nonce: String,
     /// The signature in Base58
     pub signature: String,
 }
@@ -89,6 +93,7 @@ pub fn generate_keypair() -> Result<String, JsValue> {
 /// * `to_address` - Recipient Solana address (Base58)
 /// * `amount_lamports` - Amount in lamports (1 SOL = 1,000,000,000)
 /// * `token_mint` - Optional SPL token mint address (null for native SOL)
+/// * `nonce` - UUID nonce for replay protection (required for v2 API)
 ///
 /// # Returns
 /// JSON string with the complete transfer request ready for API submission.
@@ -98,6 +103,7 @@ pub fn generate_public_transfer(
     to_address: &str,
     amount_lamports: u64,
     token_mint: Option<String>,
+    nonce: &str,
 ) -> Result<String, JsValue> {
     // 1. Decode the secret key
     let key_bytes = bs58::decode(secret_key_bs58)
@@ -127,12 +133,12 @@ pub fn generate_public_transfer(
     let verifying_key = signing_key.verifying_key();
     let from_address = bs58::encode(verifying_key.as_bytes()).into_string();
 
-    // 2. Construct the signing message
-    // Format: "{from_address}:{to_address}:{amount}:{token_mint|SOL}"
+    // 2. Construct the signing message (v2 API format)
+    // Format: "{from_address}:{to_address}:{amount}:{token_mint|SOL}:{nonce}"
     let mint_str = token_mint.as_deref().unwrap_or("SOL");
     let message = format!(
-        "{}:{}:{}:{}",
-        from_address, to_address, amount_lamports, mint_str
+        "{}:{}:{}:{}:{}",
+        from_address, to_address, amount_lamports, mint_str, nonce
     );
 
     // 3. Sign the message
@@ -147,6 +153,7 @@ pub fn generate_public_transfer(
             amount: amount_lamports,
         },
         token_mint,
+        nonce: nonce.to_string(),
         signature: signature_bs58.clone(),
     };
 
@@ -158,6 +165,7 @@ pub fn generate_public_transfer(
         request_json,
         from_address,
         to_address: to_address.to_string(),
+        nonce: nonce.to_string(),
         signature: signature_bs58,
     };
 
@@ -196,19 +204,22 @@ mod tests {
         let keypair_json = generate_keypair().unwrap();
         let keypair: KeypairResult = serde_json::from_str(&keypair_json).unwrap();
 
-        // Generate a transfer
+        // Generate a transfer with nonce
         let to_address = generate_random_address();
+        let nonce = "019470a4-7e7c-7d3e-8f1a-2b3c4d5e6f7a";
         let result = generate_public_transfer(
             &keypair.secret_key,
             &to_address,
             1_000_000_000, // 1 SOL
             None,
+            nonce,
         )
         .unwrap();
 
         let parsed: TransferResult = serde_json::from_str(&result).unwrap();
         assert_eq!(parsed.from_address, keypair.public_key);
         assert_eq!(parsed.to_address, to_address);
+        assert_eq!(parsed.nonce, nonce);
         assert!(!parsed.signature.is_empty());
     }
 }

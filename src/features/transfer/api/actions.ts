@@ -2,6 +2,8 @@
  * Transfer Server Actions - React 19 Server Actions for transfer operations
  * 
  * These actions run on the server and can be used with useActionState
+ * 
+ * v2 API: Now requires nonce for replay protection and idempotency
  */
 'use server';
 
@@ -38,6 +40,9 @@ export type ListActionState =
 /**
  * Submit a new transfer request
  * Use with useActionState for form state management
+ * 
+ * v2 API: Requires nonce for replay protection. The nonce must be included
+ * in the signature (signed client-side) and passed in the form data.
  */
 export async function submitTransferAction(
   _prevState: TransferActionState,
@@ -49,14 +54,16 @@ export async function submitTransferAction(
   const tokenMint = formData.get('token_mint') as string | null;
   const signature = formData.get('signature') as string;
   const transferType = formData.get('transfer_type') as 'public' | 'confidential';
+  // v2 API: nonce is required and must match what was signed
+  const nonce = formData.get('nonce') as string;
   
-  // Validate required fields
-  if (!fromAddress || !toAddress || !signature) {
+  // Validate required fields (now includes nonce)
+  if (!fromAddress || !toAddress || !signature || !nonce) {
     return {
       status: 'error',
       error: {
         type: 'validation_error',
-        message: 'Missing required fields',
+        message: 'Missing required fields (from_address, to_address, signature, nonce)',
       },
     };
   }
@@ -78,7 +85,8 @@ export async function submitTransferAction(
               type: 'public',
               amount: Number(amount),
             },
-      token_mint: tokenMint || undefined,
+      token_mint: tokenMint || null,
+      nonce,
       signature,
     };
     

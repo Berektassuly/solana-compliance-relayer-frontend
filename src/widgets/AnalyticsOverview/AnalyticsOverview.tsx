@@ -6,7 +6,7 @@
  */
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useHydrated, useDashboardAnalytics } from '@/hooks';
 import { motion } from 'framer-motion';
 import { ShieldAlert, ShieldX, ChevronDown } from 'lucide-react';
 import {
@@ -23,7 +23,6 @@ import {
   Cell,
 } from 'recharts';
 import type { SecurityFlag, VolumeDataPoint, AssetDistribution } from '@/types/analytics.types';
-import { useDashboardAnalytics } from '@/hooks';
 import { mockAnalyticsData } from './mockAnalyticsData';
 
 // ============================================================================
@@ -282,11 +281,7 @@ export function AnalyticsOverview({
   compact = false,
 }: AnalyticsOverviewProps = {}) {
   // Prevent SSR rendering of charts which causes dimension warnings
-  const [isMounted, setIsMounted] = useState(false);
-  
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isMounted = useHydrated();
 
   // Fetch live data from the analytics hook (only if props not provided)
   const hookData = useDashboardAnalytics();

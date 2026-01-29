@@ -23,6 +23,7 @@
 - [Key Features](#key-features)
 - [Technical Stack](#technical-stack)
 - [Getting Started](#getting-started)
+- [Security & API Logic](#security--api-logic)
 - [Environment Configuration](#environment-configuration)
 - [Pages](#pages)
 - [Widgets](#widgets)
@@ -165,7 +166,7 @@ src/
 | **Analytics Dashboard** | Real-time charts using Recharts: 24h volume area chart, 7-day bar chart, radial success gauge |
 | **Operational Metrics** | Live KPI cards showing total transfers, success rate, average latency, compliance breakdown |
 | **Interactive Risk Scanner** | Pre-flight wallet compliance check with animated 3-step analysis |
-| **Client-Side WASM Signing** | Ed25519 signatures generated via Rust/WASM - private keys never leave the browser |
+| **Client-Side WASM Signing** | Ed25519 signatures via Rust/WASM; v2 API uses nonce + `{from}:{to}:{amount}:{mint}:{nonce}` signing. Private keys never leave the browser |
 | **Dual Transfer Modes** | Public (standard SPL) and Confidential (Token-2022 ElGamal) transfer support |
 | **Real-Time Monitoring** | 3-second transfer-status polling with animated status transitions |
 | **System Health Bar** | Sticky header with branded logo, database/blockchain/API health indicators |
@@ -191,6 +192,14 @@ src/
 | Linting | ESLint (Flat Config) | 9.x |
 | Architecture | Feature-Sliced Design | - |
 
+**Security & signing (v2 API):**
+
+| Dependency | Purpose | Version |
+|------------|---------|---------|
+| **uuid** | Nonce generation (UUID v7) | 13.x |
+| **tweetnacl** | Ed25519 signing | 1.x |
+| **bs58** | Base58 encode/decode (signatures, keys) | 6.x |
+
 ---
 
 ## Getting Started
@@ -210,11 +219,59 @@ cd solana-compliance-relayer-frontend
 # Install dependencies
 pnpm install
 
-# Start the development server
+# Rebuild the WASM module (required after clone or any WASM/Rust changes)
+cd wasm && wasm-pack build --target web
+```
+
+Then copy the built WASM artifacts into the public folder (see [WASM Module](#wasm-module) for paths).  
+Finally, start the development server:
+
+```bash
 pnpm dev
 ```
 
 The application will be available at `http://localhost:3000`.
+
+> **CRITICAL:** The WASM module **must** be rebuilt after cloning or after any changes to the Rust/WASM code.  
+> Use: `cd wasm && wasm-pack build --target web`, then copy `pkg/*.wasm` and `pkg/*.js` into `public/wasm/`.
+
+---
+
+## Security & API Logic
+
+The frontend integrates with the **Backend Security Protocol (v2)**, which enforces **replay protection** and **idempotency** for all transfer requests.
+
+### Secure Transfer Protocol
+
+| Concept | Description |
+|--------|-------------|
+| **Nonce** | A unique UUID (v7 preferred) is generated for **every** transfer request. The client uses `uuid` (v7) for time-ordered uniqueness. |
+| **Signing message** | The backend expects a **deterministic** message; see format below. The client signs UTF-8 bytes and sends a Base58-encoded Ed25519 signature. |
+| **Idempotency** | The `Idempotency-Key` HTTP header is sent with each `POST /transfer-requests` call. Its value **must** match the request body `nonce`. The API client sets this header automatically. |
+
+#### New signing message format
+
+The message string signed by the client (Ed25519) **must** match the backend exactly:
+
+```
+{from}:{to}:{amount}:{mint}:{nonce}
+```
+
+- **from** — `from_address` (sender Base58).
+- **to** — `to_address` (recipient Base58).
+- **amount** — For public transfers: decimal string of lamports (e.g. `"1000000000"`). For confidential: literal `"confidential"`.
+- **mint** — `token_mint` if present; otherwise the literal `"SOL"`.
+- **nonce** — The same UUID sent in the JSON body.
+
+No spaces or extra separators. The signature is Base58-encoded and sent in the `signature` field.
+
+#### Summary of codebase changes
+
+| Layer | Changes |
+|-------|--------|
+| **WASM** | Accepts `nonce` parameter; uses new signing format `{from}:{to}:{amount}:{mint}:{nonce}`. |
+| **API client** | Sends `Idempotency-Key` header (value = body `nonce`). Request body includes `nonce` and `signature`. |
+| **Services** | Generate UUID v7 nonces per request; pass nonce into WASM and API client. |
 
 ---
 
@@ -331,7 +388,7 @@ public/wasm/                # Runtime files (committed)
 | Function | Description |
 |----------|-------------|
 | `generate_keypair()` | Generate Ed25519 keypair (Base58) |
-| `generate_public_transfer(secretKey, toAddress, amount, tokenMint?)` | Create signed transfer request |
+| `generate_public_transfer(secretKey, toAddress, amount, tokenMint?, nonce)` | Create signed transfer request (v2: **nonce** required; signing uses `{from}:{to}:{amount}:{mint}:{nonce}`) |
 | `generate_random_address()` | Generate random Solana address |
 
 ### Building
@@ -340,7 +397,7 @@ public/wasm/                # Runtime files (committed)
 # Prerequisites: Rust + wasm-pack
 cargo install wasm-pack
 
-# Build
+# Build (REQUIRED after clone or any WASM/Rust changes)
 cd wasm
 wasm-pack build --target web --out-dir pkg
 
@@ -349,20 +406,29 @@ cp pkg/solana_transfer_wasm_bg.wasm ../public/wasm/
 cp pkg/solana_transfer_wasm_bg.js ../public/wasm/
 ```
 
+> **CRITICAL:** Rebuild the WASM module after any changes to `wasm/src/lib.rs` or related Rust code.  
+> Command: `cd wasm && wasm-pack build --target web`
+
 The frontend loads WASM via **`src/lib/wasm.ts`**: it fetches the JS and WASM from `/wasm/` at runtime.  
 `next.config` webpack WASM rules exist for potential bundling; the current pipeline uses manual copy + fetch.
 
 ### Usage
 
 ```typescript
+import { v7 as uuidv7 } from 'uuid';
 import { generateKeypair, generatePublicTransfer } from '@/lib/wasm';
 
 const keypair = await generateKeypair();
+const nonce = uuidv7();  // v2 API: unique nonce per request
+
 const transfer = await generatePublicTransfer(
   keypair.secret_key,
   destinationAddress,
-  1_000_000_000  // 1 SOL in lamports
+  1_000_000_000,  // 1 SOL in lamports
+  undefined,      // tokenMint (null for SOL)
+  nonce
 );
+// Use transfer.request_json for POST /transfer-requests; set Idempotency-Key: nonce
 ```
 
 ---
@@ -443,7 +509,7 @@ If port 3000 is occupied, Next.js automatically selects the next available port.
 
 ### WASM Loading Errors
 
-Ensure WASM files exist in `public/wasm/` directory. If missing, rebuild the WASM module.
+Ensure WASM files exist in `public/wasm/` directory. If missing or after any Rust changes, **rebuild the WASM module**: `cd wasm && wasm-pack build --target web`, then copy `pkg/*.wasm` and `pkg/*.js` into `public/wasm/`.
 
 ### API / Backend Connection
 

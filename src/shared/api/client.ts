@@ -37,19 +37,23 @@ export type TransferDetails =
 /**
  * TransferRequest - Core entity from backend
  * Matches: src/domain/types.rs::TransferRequest
+ * 
+ * v2 API: Now includes nonce field for replay protection
  */
 export interface TransferRequest {
   id: string;
   from_address: string;
   to_address: string;
   transfer_details: TransferDetails;
-  token_mint?: string;
+  token_mint?: string | null;
   compliance_status: ComplianceStatus;
   blockchain_status: BlockchainStatus;
-  blockchain_signature?: string;
+  blockchain_signature?: string | null;
   blockchain_retry_count: number;
-  blockchain_last_error?: string;
-  blockchain_next_retry_at?: string;
+  blockchain_last_error?: string | null;
+  blockchain_next_retry_at?: string | null;
+  /** UUID nonce used for this request (v2 API) */
+  nonce?: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -57,12 +61,16 @@ export interface TransferRequest {
 /**
  * SubmitTransferRequest - API request body
  * Matches: src/domain/types.rs::SubmitTransferRequest
+ * 
+ * v2 API: Now requires nonce for replay protection and idempotency
  */
 export interface SubmitTransferRequest {
   from_address: string;
   to_address: string;
   transfer_details: TransferDetails;
-  token_mint?: string;
+  token_mint?: string | null;
+  /** UUID nonce for replay protection (required, 32-64 chars) */
+  nonce: string;
   signature: string;
 }
 
@@ -162,6 +170,9 @@ async function handleResponse<T>(response: Response): Promise<T> {
 
 /**
  * Submit a new transfer request
+ * 
+ * v2 API: Now includes Idempotency-Key header for replay protection.
+ * The header value must match the nonce in the request body.
  */
 export async function submitTransfer(
   request: SubmitTransferRequest
@@ -170,6 +181,7 @@ export async function submitTransfer(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
+      'Idempotency-Key': request.nonce,
     },
     body: JSON.stringify(request),
   });

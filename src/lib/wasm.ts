@@ -15,7 +15,8 @@ interface WasmExports {
     secretKey: string,
     toAddress: string,
     amountLamports: bigint,
-    tokenMint?: string | null
+    tokenMint: string | null | undefined,
+    nonce: string
   ) => string;
   generate_random_address: () => string;
 }
@@ -107,19 +108,22 @@ export async function generateKeypair(): Promise<KeypairResult> {
  * @param toAddress - Recipient Solana address
  * @param amountLamports - Amount in lamports (1 SOL = 1e9)
  * @param tokenMint - Optional SPL token mint (null for native SOL)
+ * @param nonce - UUID nonce for replay protection (required for v2 API)
  */
 export async function generatePublicTransfer(
   secretKey: string,
   toAddress: string,
   amountLamports: number,
-  tokenMint?: string
+  tokenMint: string | undefined,
+  nonce: string
 ): Promise<TransferResult> {
   const wasm = await initWasm();
   const result = wasm.generate_public_transfer(
     secretKey,
     toAddress,
     BigInt(amountLamports),
-    tokenMint ?? null
+    tokenMint ?? null,
+    nonce
   );
   return JSON.parse(result);
 }

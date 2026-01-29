@@ -1,6 +1,7 @@
 import { generateKeypair, generatePublicTransfer } from '@/lib/wasm';
 import { API_BASE_URL } from '@/lib/constants';
 import type { TransferRequest as ApiTransferRequest } from '@/types/api';
+import { v7 as uuidv7 } from 'uuid';
 
 /**
  * Submit a transfer request to the backend via WASM signing.
@@ -45,18 +46,25 @@ export async function submitTransfer(
     throw new Error('Confidential transfers are not yet supported in the UI. Use the API directly.');
   }
 
-  // 4. Generate the signed transfer request using WASM
+  // 4. Generate a unique nonce for replay protection (v2 API requirement)
+  const nonce = uuidv7();
+
+  // 5. Generate the signed transfer request using WASM (now includes nonce in signature)
   const transferResult = await generatePublicTransfer(
     keypair.secret_key,
     request.recipient,
     amountLamports,
-    tokenMint
+    tokenMint,
+    nonce
   );
 
-  // 5. Submit to backend API
+  // 6. Submit to backend API with Idempotency-Key header
   const response = await fetch(`${API_BASE_URL}/transfer-requests`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: { 
+      'Content-Type': 'application/json',
+      'Idempotency-Key': nonce,
+    },
     body: transferResult.request_json,
   });
 

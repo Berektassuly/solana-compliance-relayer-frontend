@@ -22,6 +22,8 @@ export interface TransferResult {
   request_json: string;
   from_address: string;
   to_address: string;
+  /** UUID nonce used for this request */
+  nonce: string;
   signature: string;
 }
 
@@ -83,6 +85,8 @@ export type TransferDetails = PublicTransfer | ConfidentialTransfer;
 
 /**
  * A transfer request as returned by the API.
+ * 
+ * v2 API: Now includes nonce field for replay protection
  */
 export interface TransferRequest {
   /** Unique identifier (UUID v4) */
@@ -107,6 +111,8 @@ export interface TransferRequest {
   blockchain_last_error: string | null;
   /** Next scheduled retry time (ISO 8601) */
   blockchain_next_retry_at: string | null;
+  /** UUID nonce used for replay protection (v2 API) */
+  nonce: string | null;
   /** Creation timestamp (ISO 8601) */
   created_at: string;
   /** Last update timestamp (ISO 8601) */
