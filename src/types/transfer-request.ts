@@ -168,11 +168,14 @@ export function isTerminalStatus(status: BlockchainStatus): boolean {
 }
 
 /**
- * Check if a transfer can be retried via the API.
- * Note: 'expired' transfers CANNOT be retried - user must re-sign.
+ * Check if the UI should show the "Retry" button.
+ * Only show for 'failed' — do NOT show for 'pending_submission' (Queued),
+ * as calling POST /retry while the backend worker is moving the request to
+ * processing causes a race and validation error. For Queued, just poll and wait.
+ * Note: 'expired' transfers cannot be retried — user must re-sign.
  */
 export function canRetryTransfer(status: BlockchainStatus): boolean {
-  return status === 'pending_submission' || status === 'failed';
+  return status === 'failed';
 }
 
 /**

@@ -1,15 +1,15 @@
 'use client';
 
-import { useEffect, useState, useCallback, useSyncExternalStore } from 'react';
+import { useEffect, useState, useCallback, useRef, useSyncExternalStore } from 'react';
 import { TransactionTable } from './TransactionTable';
-import { fetchTransferRequests } from '@/services/transfer-requests';
+import { fetchTransferRequests, fetchTransferRequest } from '@/services/transfer-requests';
 import { isTerminalStatus } from '@/types/transfer-request';
 import type { TransferRequest } from '@/types/transfer-request';
 import { Loader2, RefreshCw, AlertCircle } from 'lucide-react';
 
 const emptySubscribe = () => () => {};
 
-/** Polling interval in milliseconds */
+/** Polling interval for GET /transfer-requests/{id} (per non-terminal transfer) */
 const POLL_INTERVAL_MS = 5000;
 
 export function Monitor() {
@@ -17,6 +17,8 @@ export function Monitor() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const transactionsRef = useRef<TransferRequest[]>([]);
+  transactionsRef.current = transactions;
 
   // Use useSyncExternalStore for hydration detection (React 18+ pattern)
   const isMounted = useSyncExternalStore(
@@ -25,7 +27,7 @@ export function Monitor() {
     () => false
   );
 
-  // Fetch transactions from API
+  // Initial load: fetch list once
   const loadTransactions = useCallback(async (showLoadingState = false) => {
     if (showLoadingState) setIsLoading(true);
     setError(null);
@@ -41,34 +43,52 @@ export function Monitor() {
     }
   }, []);
 
-  // Initial load
   useEffect(() => {
     if (!isMounted) return;
     loadTransactions(true);
   }, [isMounted, loadTransactions]);
 
-  // Polling effect - polls every 5s if there are non-terminal transactions
+  // Poll GET /transfer-requests/{id} for each non-terminal transfer only.
+  // Do NOT call POST /retry automatically — retry is only on manual "Retry" click.
+  // Stop polling when status is confirmed, failed, or expired.
   useEffect(() => {
-    if (!isMounted) return;
+    if (!isMounted || transactions.length === 0) return;
 
-    // Check if there are any non-terminal transactions
-    const hasNonTerminal = transactions.some(
-      (tx) => !isTerminalStatus(tx.blockchain_status)
-    );
+    const nonTerminalIds = transactions
+      .filter((tx) => !isTerminalStatus(tx.blockchain_status))
+      .map((tx) => tx.id);
 
-    // If all transactions are terminal, don't poll
-    if (!hasNonTerminal && transactions.length > 0) {
-      return;
-    }
+    if (nonTerminalIds.length === 0) return;
 
-    const intervalId = setInterval(() => {
-      loadTransactions(false);
+    const intervalId = setInterval(async () => {
+      const current = transactionsRef.current;
+      const idsToPoll = nonTerminalIds.filter((id) => {
+        const tx = current.find((t) => t.id === id);
+        return tx && !isTerminalStatus(tx.blockchain_status);
+      });
+      if (idsToPoll.length === 0) return;
+
+      const results = await Promise.allSettled(
+        idsToPoll.map((id) => fetchTransferRequest(id))
+      );
+      const updates = results
+        .filter((r): r is PromiseFulfilledResult<TransferRequest> => r.status === 'fulfilled')
+        .map((r) => r.value);
+      if (updates.length === 0) return;
+
+      setTransactions((prev) =>
+        prev.map((t) => {
+          const updated = updates.find((u) => u.id === t.id);
+          return updated ?? t;
+        })
+      );
+      setLastUpdated(new Date());
     }, POLL_INTERVAL_MS);
 
     return () => clearInterval(intervalId);
   }, [isMounted, transactions, loadTransactions]);
 
-  // Handle retry success - update local state
+  // Handle retry success (user clicked "Retry") — update local state
   const handleRetrySuccess = useCallback((updated: TransferRequest) => {
     setTransactions((prev) =>
       prev.map((tx) => (tx.id === updated.id ? updated : tx))
@@ -130,14 +150,14 @@ export function Monitor() {
         />
       )}
 
-      {/* Polling indicator */}
+      {/* Polling indicator: GET /transfer-requests/{id} for non-terminal only; no auto-retry */}
       {transactions.some((tx) => !isTerminalStatus(tx.blockchain_status)) && (
         <div className="flex items-center justify-center gap-2 text-xs text-muted">
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75" />
             <span className="relative inline-flex rounded-full h-2 w-2 bg-primary" />
           </span>
-          Auto-refreshing every 5s
+          Polling status every 5s
         </div>
       )}
     </div>

@@ -78,7 +78,9 @@ export async function fetchTransferRequest(
 
 /**
  * Retry blockchain submission for a failed transfer request.
- * Only eligible for requests with blockchain_status = 'pending_submission' or 'failed'.
+ * Call ONLY when the user manually clicks "Retry". Only show the Retry button
+ * when blockchain_status = 'failed'. Do not call for 'pending_submission'
+ * (Queued) — that causes a race with the backend worker and validation errors.
  *
  * @param id - Transfer request UUID
  */
