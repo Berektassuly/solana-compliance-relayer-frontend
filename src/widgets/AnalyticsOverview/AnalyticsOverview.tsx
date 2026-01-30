@@ -152,8 +152,24 @@ function AssetDistributionChart({ data }: AssetDistributionChartProps) {
                 border: '1px solid #1f2a3a',
                 borderRadius: '8px',
                 color: '#fff',
+                padding: '8px 12px',
               }}
-              formatter={(value) => value != null ? [Number(value), 'Transactions'] : null}
+              content={({ active, payload }) => {
+                if (active && payload && payload[0]) {
+                  const data = payload[0].payload;
+                  const value = payload[0].value;
+                  return (
+                    <div style={{ backgroundColor: '#111722', border: '1px solid #1f2a3a', borderRadius: '8px', padding: '8px 12px', color: '#fff' }}>
+                      <div style={{ fontWeight: 500 }}>{data.asset}</div>
+                      <div>
+                        <span style={{ color: '#94a3b8' }}>Transactions</span>
+                        <span> : {Number(value)}</span>
+                      </div>
+                    </div>
+                  );
+                }
+                return null;
+              }}
             />
             <Bar dataKey="volume" radius={[4, 4, 0, 0]}>
               {chartData.map((_, index) => (
