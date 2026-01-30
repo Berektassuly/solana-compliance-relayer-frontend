@@ -2,13 +2,14 @@
 
 # Solana Compliance Relayer Frontend
 
-### Real-time dashboard for privacy-preserving Solana transfers with integrated compliance monitoring.
+### Real-time dashboard for privacy-preserving Solana transfers with client-side WASM signing.
 
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
-[![React](https://img.shields.io/badge/React-61DAFB?style=for-the-badge&logo=react&logoColor=black)](https://react.dev/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
-[![Rust WASM](https://img.shields.io/badge/Rust_WASM-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-06B6D4?style=for-the-badge&logo=tailwindcss&logoColor=white)](https://tailwindcss.com/)
+[![WebAssembly](https://img.shields.io/badge/WebAssembly-654FF0?style=for-the-badge&logo=webassembly&logoColor=white)](https://webassembly.org/)
+[![Rust](https://img.shields.io/badge/Rust-000000?style=for-the-badge&logo=rust&logoColor=white)](https://www.rust-lang.org/)
+[![Solana](https://img.shields.io/badge/Solana-9945FF?style=for-the-badge&logo=solana&logoColor=white)](https://solana.com/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-22C55E?style=for-the-badge)](LICENSE)
 [![Author](https://img.shields.io/badge/Author-Berektassuly.com-F97316?style=for-the-badge)](https://berektassuly.com)
 
@@ -16,40 +17,31 @@
 
 ---
 
-## Table of Contents
+## Why This Exists
 
-- [Overview](#overview)
-- [Architecture](#architecture)
-- [Key Features](#key-features)
-- [Technical Stack](#technical-stack)
-- [Getting Started](#getting-started)
-- [Security & API Logic](#security--api-logic)
-- [Environment Configuration](#environment-configuration)
-- [Pages](#pages)
-- [Widgets](#widgets)
-- [WASM Module](#wasm-module)
-- [CSS Architecture](#css-architecture)
-- [Scripts](#scripts)
-- [Troubleshooting](#troubleshooting)
-- [Contact](#contact)
-- [License](#license)
+Compliance dashboards for privacy protocols face a critical UX paradox: **operators need real-time visibility**, but **cryptographic signing must remain client-side**. This frontend resolves that tension through a unified dashboard with embedded WebAssembly cryptography.
+
+| Challenge | Solution |
+|-----------|----------|
+| Visualizing complex compliance data | Real-time analytics with Recharts: volume charts, success gauges, and security flags |
+| Client-side signing without key exposure | Rust/WASM Ed25519 module—private keys never leave the browser |
+| Real-time transaction monitoring | 3-second polling with animated status transitions and retry actions |
+| Interactive compliance validation | Pre-flight Risk Scanner with animated 3-step analysis visualization |
+
+> **Core Guarantee:** All cryptographic operations (keypair generation, message signing) execute **locally in WebAssembly**. The backend never receives private keys.
 
 ---
 
-## Overview
+## Key Features
 
-This is the official frontend interface for the Solana Compliance Relayer. It provides a DeFi-grade dashboard with comprehensive analytics and operational monitoring:
-
-| Section | Description |
+| Feature | Description |
 |---------|-------------|
-| **Analytics Overview** | Real-time transaction volume charts, success rate gauges, and security flag monitoring |
-| **Metrics Row** | Key operational KPIs: total transfers, success rate, latency, and compliance breakdown |
-| **Terminal** | Submit public or confidential transfers with client-side WASM signing |
-| **Monitor** | Real-time transaction tracking with status updates and retry functionality |
-| **Risk Scanner** | Interactive wallet compliance checker with animated analysis visualization |
-| **Admin Panel** | Blocklist management with overlay interface |
-
-The application connects to the Rust backend via REST API and uses WebAssembly for secure client-side cryptographic operations.
+| **WASM Ed25519 Signer** | Client-side Rust module (`ed25519-dalek`) for secure transaction signing with nonce-based replay protection |
+| **Interactive Terminal** | Submit public or confidential transfers with real-time validation and signature generation |
+| **Analytics Dashboard** | 24h volume charts, 7-day distribution, success rate gauge, and security flag monitoring |
+| **Real-Time Monitor** | Transaction table with 3s polling, status badges, and one-click retry functionality |
+| **Risk Scanner** | Pre-flight wallet compliance checker with animated Blocklist → Range → Helius analysis |
+| **Admin Blocklist** | Overlay panel for managing blocked addresses with CRUD operations |
 
 ---
 
@@ -58,466 +50,113 @@ The application connects to the Rust backend via REST API and uses WebAssembly f
 ```
 ┌─────────────────────────────────────────────────────────────────────────┐
 │                        FRONTEND (Next.js 16)                            │
-├─────────────────────────────────────────────────────────────────────────┤
 │                                                                         │
 │  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    SystemHealthBar (Sticky)                     │    │
-│  │  Logo + Brand • Database Status • Blockchain • Range API        │    │
+│  │                      UI Components                              │    │
+│  │  ┌──────────────┐  ┌──────────────┐  ┌────────────────────┐     │    │
+│  │  │ Terminal     │  │ Analytics    │  │ Monitor            │     │    │
+│  │  │ (TransferUI) │  │ (Recharts)   │  │ (Status Polling)   │     │    │
+│  │  └──────────────┘  └──────────────┘  └────────────────────┘     │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                         │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                    AnalyticsOverview Widget                     │    │
-│  │  24h Volume Chart │ 7-Day Bar Chart │ Success Gauge │ Flags     │    │
+│                                 │                                       │
+│  ┌──────────────────────────────▼──────────────────────────────────┐    │
+│  │                     Client-Side Signing                         │    │
+│  │  ┌────────────────────────────────────────────────────────┐     │    │
+│  │  │  WASM Module (ed25519-dalek)                           │     │    │
+│  │  │  generate_keypair() • generate_public_transfer(nonce)  │     │    │
+│  │  │  Message: {from}:{to}:{amount}:{mint}:{nonce}          │     │    │
+│  │  └────────────────────────────────────────────────────────┘     │    │
 │  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                         │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                       MetricsRow Widget                         │    │
-│  │  Total Transfers │ Success Rate │ Avg Latency │ Compliance      │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                                                         │
-│  ┌─────────────────┐    ┌──────────────────┐    ┌───────────────────┐   │
-│  │  Terminal Panel │    │  WASM Signer     │    │   Monitor Panel   │   │
-│  │  - Public Mode  │───>│  (Ed25519-dalek) │    │   - Status Table  │   │
-│  │  - Confidential │    │  - Client-side   │    │   - 3s Polling    │   │
-│  └─────────────────┘    └────────┬─────────┘    │   - Retry Action  │   │
-│                                  │              └───────────────────┘   │
-│                                  ▼                                      │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                       Risk Scanner (Overlay)                    │    │
-│  │  Pre-flight compliance check  •  Animated 3-step analysis       │    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                  │                                      │
-│  ┌─────────────────────────────────────────────────────────────────┐    │
-│  │                     API Layer (services/)                       │    │
-│  │transfer-requests • risk-check • blocklist • api-client • transfer    │
-│  └─────────────────────────────────────────────────────────────────┘    │
-│                                  │                                      │
-└──────────────────────────────────┼──────────────────────────────────────┘
-                                   │ REST API
-                                   ▼
-                     ┌─────────────────────────┐
-                     │   Backend (Axum/Rust)   │
-                     │   Railway Deployment    │
-                     └─────────────────────────┘
+│                                 │                                       │
+│  ┌──────────────────────────────▼──────────────────────────────────┐    │
+│  │                      API Layer (services/)                      │    │
+│  │  transfer-requests • risk-check • blocklist • transactions      │    │
+│  └─────────────────────────────────┬───────────────────────────────┘    │
+└────────────────────────────────────┼────────────────────────────────────┘
+                                     │ REST API + Idempotency-Key
+                                     ▼
+                       ┌─────────────────────────┐
+                       │   Backend (Axum/Rust)   │
+                       │   Range • Helius • Jito │
+                       └─────────────────────────┘
 ```
-
-### Directory Structure
-
-```
-src/
-├── app/                    # Next.js App Router
-│   ├── page.tsx            # Main unified dashboard
-│   ├── dashboard/          # Dedicated analytics page
-│   │   ├── page.tsx        # Analytics + Metrics view
-│   │   └── layout.tsx      # Dashboard layout
-│   ├── admin/              # Admin: Blocklist Manager
-│   │   └── page.tsx
-│   ├── (landing)/          # Landing page route group
-│   │   └── page.tsx
-│   ├── globals.css         # Tailwind v4 configuration
-│   └── layout.tsx          # Root layout
-├── components/             # Shared UI components
-│   ├── ui/                 # Button, Input, Select primitives
-│   ├── shared/             # Header, Footer, SystemHealthBar
-│   └── dashboard/          # AdminOverlay
-├── features/               # Feature modules (Feature-Sliced Design)
-│   ├── terminal/           # Transfer form and mode switching
-│   ├── monitor/            # Transaction table and status badges
-│   ├── risk-scanner/       # Interactive wallet compliance checker
-│   ├── transfer/           # Transfer submission logic + Zustand store
-│   └── wallet/             # Wallet utilities + store
-├── widgets/                # Composite UI widgets
-│   ├── AnalyticsOverview/  # Charts + gauges + security flags
-│   ├── MetricsRow/         # KPI metric cards
-│   └── OperationalDashboard/ # Full operational view
-├── hooks/                  # Custom React hooks
-│   ├── useDashboardAnalytics.ts  # Unified analytics data hook
-│   └── useHydrated.ts      # SSR hydration helper
-├── lib/                    # Utilities and constants
-│   ├── constants.ts        # Theme colors, asset definitions
-│   ├── utils.ts            # Helper functions (cn, formatAddress)
-│   └── wasm.ts             # WASM module loader
-├── services/               # API layer
-│   ├── api-client.ts       # Base API client (optional)
-│   ├── transfer-requests.ts # Transfer CRUD operations
-│   ├── transfer.ts         # Transfer submission helpers
-│   ├── risk-check.ts       # Wallet risk check API
-│   ├── blocklist.ts        # Admin blocklist API
-│   └── transactions.ts     # Transaction queries
-├── shared/                 # Shared utilities and API client
-│   ├── api/                # Centralized API client
-│   └── lib/                # Notifications, wallet utilities
-├── store/                  # Global Zustand stores
-│   └── useUIStore.ts       # UI state (transfer mode, transactions, loading)
-└── types/                  # TypeScript definitions
-    ├── analytics.types.ts  # Analytics data types
-    ├── transaction.ts      # Transaction types
-    └── transfer-request.ts # Transfer request types
-```
-
-**Zustand stores:** Beyond `store/useUIStore`, feature-level stores live in `features/transfer/model/store.ts` (`useTransferStore` — transfer CRUD, polling) and `features/wallet/model/store.ts` (`useWalletStore` — connection, compliance tier, signing).
 
 ---
 
-## Key Features
+## Backend
 
-| Feature | Description |
-|---------|-------------|
-| **Analytics Dashboard** | Real-time charts using Recharts: 24h volume area chart, 7-day bar chart, radial success gauge |
-| **Operational Metrics** | Live KPI cards showing total transfers, success rate, average latency, compliance breakdown |
-| **Interactive Risk Scanner** | Pre-flight wallet compliance check with animated 3-step analysis |
-| **Client-Side WASM Signing** | Ed25519 signatures via Rust/WASM; v2 API uses nonce + `{from}:{to}:{amount}:{mint}:{nonce}` signing. Private keys never leave the browser |
-| **Dual Transfer Modes** | Public (standard SPL) and Confidential (Token-2022 ElGamal) transfer support |
-| **Real-Time Monitoring** | 3-second transfer-status polling with animated status transitions |
-| **System Health Bar** | Sticky header with branded logo, database/blockchain/API health indicators |
-| **Admin Overlay** | Slide-in panel for blocklist management |
-| **Dark Theme** | Professional dark navy UI with glassmorphism effects |
-| **Responsive Design** | Optimized for desktop with mobile-friendly fallbacks |
+The backend API powering this frontend is a separate repository:
+
+- **Repository:** [solana-compliance-relayer](https://github.com/Berektassuly/solana-compliance-relayer)
+- **Live demo:** [solana-compliance-relayer.railway.app](https://solana-compliance-relayer.railway.app)
+
+It provides the compliance engine (Range Protocol), MEV protection (Jito Bundles), transaction processing worker, and Helius webhook integration. Built with Rust, Axum, SQLx, and PostgreSQL.
 
 ---
 
-## Technical Stack
-
-| Component | Technology | Version |
-|-----------|------------|---------|
-| Framework | Next.js (App Router) | 16.1.x |
-| Runtime | React (Server Components) | 19.1.x |
-| Styling | Tailwind CSS | 4.1.x |
-| Language | TypeScript | 5.x |
-| State | Zustand | 5.0.x |
-| Validation | Zod | 4.0.x |
-| Animations | Framer Motion | 12.x |
-| Charts | Recharts | 3.7.x |
-| WASM | Rust + wasm-pack | 1.x |
-| Linting | ESLint (Flat Config) | 9.x |
-| Architecture | Feature-Sliced Design | - |
-
-**Security & signing (v2 API):**
-
-| Dependency | Purpose | Version |
-|------------|---------|---------|
-| **uuid** | Nonce generation (UUID v7) | 13.x |
-| **tweetnacl** | Ed25519 signing | 1.x |
-| **bs58** | Base58 encode/decode (signatures, keys) | 6.x |
-
----
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
 
-- Node.js 20.x or later
-- pnpm 9.x (recommended) or npm
+- Node.js 20+ and pnpm 9+
+- Rust 1.70+ and wasm-pack (for WASM compilation)
 
 ### Installation
 
 ```bash
 # Clone the repository
-git clone https://github.com/Berektassuly/solana-compliance-relayer-frontend.git
+git clone https://github.com/berektassuly/solana-compliance-relayer-frontend.git
 cd solana-compliance-relayer-frontend
 
 # Install dependencies
 pnpm install
 
-# Rebuild the WASM module (required after clone or any WASM/Rust changes)
-cd wasm && wasm-pack build --target web
+# Build the WASM module (required before first run)
+cd wasm && wasm-pack build --target web --out-dir pkg
+
+# Copy WASM artifacts to public directory
+cp pkg/solana_transfer_wasm_bg.wasm ../public/wasm/
+cp pkg/solana_transfer_wasm_bg.js ../public/wasm/
+
+# Return to root and start development server
+cd .. && pnpm dev
 ```
 
-Then copy the built WASM artifacts into the public folder (see [WASM Module](#wasm-module) for paths).  
-Finally, start the development server:
-
-```bash
-pnpm dev
-```
-
-The application will be available at `http://localhost:3000`.
-
-> **CRITICAL:** The WASM module **must** be rebuilt after cloning or after any changes to the Rust/WASM code.  
-> Use: `cd wasm && wasm-pack build --target web`, then copy `pkg/*.wasm` and `pkg/*.js` into `public/wasm/`.
-
----
-
-## Security & API Logic
-
-The frontend integrates with the **Backend Security Protocol (v2)**, which enforces **replay protection** and **idempotency** for all transfer requests.
-
-### Secure Transfer Protocol
-
-| Concept | Description |
-|--------|-------------|
-| **Nonce** | A unique UUID (v7 preferred) is generated for **every** transfer request. The client uses `uuid` (v7) for time-ordered uniqueness. |
-| **Signing message** | The backend expects a **deterministic** message; see format below. The client signs UTF-8 bytes and sends a Base58-encoded Ed25519 signature. |
-| **Idempotency** | The `Idempotency-Key` HTTP header is sent with each `POST /transfer-requests` call. Its value **must** match the request body `nonce`. The API client sets this header automatically. |
-
-#### New signing message format
-
-The message string signed by the client (Ed25519) **must** match the backend exactly:
-
-```
-{from}:{to}:{amount}:{mint}:{nonce}
-```
-
-- **from** — `from_address` (sender Base58).
-- **to** — `to_address` (recipient Base58).
-- **amount** — For public transfers: decimal string of lamports (e.g. `"1000000000"`). For confidential: literal `"confidential"`.
-- **mint** — `token_mint` if present; otherwise the literal `"SOL"`.
-- **nonce** — The same UUID sent in the JSON body.
-
-No spaces or extra separators. The signature is Base58-encoded and sent in the `signature` field.
-
-#### Summary of codebase changes
-
-| Layer | Changes |
-|-------|--------|
-| **WASM** | Accepts `nonce` parameter; uses new signing format `{from}:{to}:{amount}:{mint}:{nonce}`. |
-| **API client** | Sends `Idempotency-Key` header (value = body `nonce`). Request body includes `nonce` and `signature`. |
-| **Services** | Generate UUID v7 nonces per request; pass nonce into WASM and API client. |
-
----
-
-## Environment Configuration
-
-Create a `.env.local` file in the project root:
+The application runs on `http://localhost:3000`. Configure the backend URL via `.env.local`:
 
 ```env
 NEXT_PUBLIC_API_URL=https://your-backend.railway.app
 ```
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `NEXT_PUBLIC_API_URL` | Backend relayer API endpoint | Yes |
+---
+
+## Tech Stack
+
+- **Framework:** Next.js 16 (App Router), React 19 (Server Components)
+- **Styling:** Tailwind CSS 4.1, Framer Motion 12
+- **State:** Zustand 5, Zod 4 (validation)
+- **Charts:** Recharts 3.7
+- **Cryptography:** Rust/WASM (ed25519-dalek), TweetNaCl, bs58, uuid v7
+- **Architecture:** Feature-Sliced Design
 
 ---
 
-## Pages
+## Documentation
 
-### Home Dashboard (/)
-
-The unified main page with three sections:
-
-1. **Analytics Overview** - Volume charts, success gauge, security flags
-2. **Metrics Row** - Key operational KPIs in card format
-3. **Execution & Monitoring** - Terminal panel + Monitor table with action buttons
-
-Features:
-- "Generate Public" button for quick test transfers
-- "Risk Scanner" button opens the compliance checker overlay
-- Admin panel accessible via settings icon in header
-
-### Analytics Dashboard (/dashboard)
-
-Dedicated analytics page with expanded metrics view:
-
-- Full-width AnalyticsOverview widget
-- Detailed MetricsRow with loading states
-- Suspense-based loading skeletons
-
-### Admin (/admin)
-
-Blocklist management interface:
-
-| Feature | Description |
-|---------|-------------|
-| **Add Address** | Block a wallet address with reason |
-| **View Blocklist** | Table of all blocked addresses |
-| **Remove Address** | Unblock addresses, allowing retries of previously rejected transfers |
-| **Admin Key** | Optional password input; operations may require server-side authentication |
-
----
-
-## Widgets
-
-### AnalyticsOverview
-
-Displays high-level metrics in a responsive grid:
-
-| Panel | Description |
-|-------|-------------|
-| **Volume Chart** | 24-hour transaction volume (Area chart) |
-| **Distribution Chart** | Last 7 days by day (Bar chart) |
-| **Status Gauge** | Success rate radial gauge with color thresholds |
-| **Security Flags** | Recent blocklist flags with severity indicators |
-
-### MetricsRow
-
-Four metric cards in a responsive grid:
-
-| Metric | Description |
-|--------|-------------|
-| **Total Transfers** | All-time transfer count |
-| **Success Rate** | Percentage with trend indicator |
-| **Avg. Latency** | Processing time in seconds |
-| **Compliance** | Approved/Rejected/Pending breakdown |
-
-### Risk Scanner
-
-Interactive wallet compliance checker:
-
-| State | Description |
-|-------|-------------|
-| **Initial** | Address input with Base58 validation, quick-scan demo buttons |
-| **Scanning** | Animated 3-step progress (Blocklist → Range Protocol → Helius DAS) |
-| **Blocked** | Red alert with rejection reason |
-| **Analyzed** | Risk gauge (0-10), per-source breakdown, Explorer link |
-
-Demo addresses for testing:
-- Clean wallet: `HvwC9QSAzwEXkUkwqNNGhfNHoVqXJYfPvPZfQvJmHWcF`
-- Blocked wallet: `4oS78GPe66RqBduuAeiMFANf27FpmgXNwokZ3ocN4z1B`
-
----
-
-## WASM Module
-
-The frontend includes a Rust-based WebAssembly module for secure client-side transaction signing.
-
-### Architecture
-
-```
-wasm/
-├── Cargo.toml              # Rust dependencies
-├── src/lib.rs              # WASM-exported functions
-└── pkg/                    # Build output
-
-public/wasm/                # Runtime files (committed)
-├── solana_transfer_wasm_bg.wasm
-└── solana_transfer_wasm_bg.js
-```
-
-### Exported Functions
-
-| Function | Description |
+| Document | Description |
 |----------|-------------|
-| `generate_keypair()` | Generate Ed25519 keypair (Base58) |
-| `generate_public_transfer(secretKey, toAddress, amount, tokenMint?, nonce)` | Create signed transfer request (v2: **nonce** required; signing uses `{from}:{to}:{amount}:{mint}:{nonce}`) |
-| `generate_random_address()` | Generate random Solana address |
-
-### Building
-
-```bash
-# Prerequisites: Rust + wasm-pack
-cargo install wasm-pack
-
-# Build (REQUIRED after clone or any WASM/Rust changes)
-cd wasm
-wasm-pack build --target web --out-dir pkg
-
-# Copy to public folder (runtime loader fetches from /wasm/ via fetch, not webpack)
-cp pkg/solana_transfer_wasm_bg.wasm ../public/wasm/
-cp pkg/solana_transfer_wasm_bg.js ../public/wasm/
-```
-
-> **CRITICAL:** Rebuild the WASM module after any changes to `wasm/src/lib.rs` or related Rust code.  
-> Command: `cd wasm && wasm-pack build --target web`
-
-The frontend loads WASM via **`src/lib/wasm.ts`**: it fetches the JS and WASM from `/wasm/` at runtime.  
-`next.config` webpack WASM rules exist for potential bundling; the current pipeline uses manual copy + fetch.
-
-### Usage
-
-```typescript
-import { v7 as uuidv7 } from 'uuid';
-import { generateKeypair, generatePublicTransfer } from '@/lib/wasm';
-
-const keypair = await generateKeypair();
-const nonce = uuidv7();  // v2 API: unique nonce per request
-
-const transfer = await generatePublicTransfer(
-  keypair.secret_key,
-  destinationAddress,
-  1_000_000_000,  // 1 SOL in lamports
-  undefined,      // tokenMint (null for SOL)
-  nonce
-);
-// Use transfer.request_json for POST /transfer-requests; set Idempotency-Key: nonce
-```
+| [Backend Repository](https://github.com/Berektassuly/solana-compliance-relayer) | Rust backend with full architecture, API reference, and deployment guides |
+| [Backend Operations Guide](https://github.com/Berektassuly/solana-compliance-relayer/blob/main/docs/OPERATIONS.md) | Helius webhooks, Range Protocol, database operations |
 
 ---
 
-## CSS Architecture
+## Roadmap
 
-This project uses **Tailwind CSS v4** with theme defined in `tailwind.config.ts`.  
-`globals.css` imports Tailwind via `@import "tailwindcss"` and `@config "../../tailwind.config.ts"`.  
-PostCSS uses `@tailwindcss/postcss` and `autoprefixer`.
-
-### Theme Configuration
-
-```typescript
-// tailwind.config.ts (extract)
-theme: {
-  extend: {
-    colors: {
-      background: "#0b0f14",
-      panel: "#111722",
-      "panel-hover": "#1a2332",
-      border: "#1f2a3a",
-      primary: {
-        DEFAULT: "#7c3aed",
-        dark: "#5b21b6",
-        light: "#a78bfa",
-      },
-      status: {
-        pending: "#eab308",
-        confirmed: "#22c55e",
-        failed: "#ef4444",
-      },
-      foreground: "#ffffff",
-      muted: "#94a3b8",
-    },
-    // ...
-  },
-}
-```
-
-### PostCSS Setup
-
-```javascript
-// postcss.config.mjs
-export default {
-  plugins: {
-    '@tailwindcss/postcss': {},
-    autoprefixer: {},
-  },
-};
-```
-
----
-
-## Scripts
-
-| Command | Description |
-|---------|-------------|
-| `pnpm dev` | Start development server (Turbopack) |
-| `pnpm build` | Create production build |
-| `pnpm start` | Start production server |
-| `pnpm lint` | Run ESLint checks |
-
----
-
-## Troubleshooting
-
-### Windows MINGW64 Path Conversion
-
-On Windows with Git Bash, path conversion may cause issues. Use:
-
-```bash
-MSYS_NO_PATHCONV=1 pnpm lint
-```
-
-### Port Conflicts
-
-If port 3000 is occupied, Next.js automatically selects the next available port. Check terminal output for the active URL.
-
-### WASM Loading Errors
-
-Ensure WASM files exist in `public/wasm/` directory. If missing or after any Rust changes, **rebuild the WASM module**: `cd wasm && wasm-pack build --target web`, then copy `pkg/*.wasm` and `pkg/*.js` into `public/wasm/`.
-
-### API / Backend Connection
-
-`NEXT_PUBLIC_API_URL` is the only required env var. It is used by `lib/constants` (default `http://localhost:8000`) and `shared/api/client` (default `http://localhost:3001`). Set it explicitly in `.env.local` so all API calls target the same backend.
-
-### Recharts SSR Warnings
-
-Charts use `'use client'` and `ResponsiveContainer` with `width="100%"` so Recharts can compute dimensions on the client and avoid SSR warnings.
+| Phase | Feature | Status |
+|-------|---------|--------|
+| 1–3 | Terminal, Monitor, WASM signing | ✅ Complete |
+| 4–6 | Analytics dashboard, Risk Scanner, Admin panel | ✅ Complete |
+| 7–10 | Nonce/v2 API, real-time metrics, system health bar | ✅ Complete |
 
 ---
 
