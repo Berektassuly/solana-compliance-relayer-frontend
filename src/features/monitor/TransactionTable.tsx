@@ -2,11 +2,12 @@
 
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Eye, EyeOff, CheckCircle, RotateCw, ExternalLink } from 'lucide-react';
+import { Eye, EyeOff, CheckCircle, RotateCw, ExternalLink, AlertTriangle, RefreshCw } from 'lucide-react';
 import { StatusBadge } from './StatusBadge';
 import { formatAddress, lamportsToSol } from '@/lib/utils';
 import { retryTransferRequest } from '@/services/transfer-requests';
 import type { TransferRequest } from '@/types/transfer-request';
+import { canRetryTransfer, requiresResign } from '@/types/transfer-request';
 
 interface TransactionTableProps {
   transactions: TransferRequest[];
@@ -101,9 +102,9 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
                 ? tx.transfer_details.amount
                 : null;
             const token = getTokenSymbol(tx.token_mint);
-            const canRetry =
-              tx.blockchain_status === 'failed' &&
-              tx.blockchain_retry_count < 10;
+            // v0.3.0: Use utility functions for retry logic
+            const canRetry = canRetryTransfer(tx.blockchain_status) && tx.blockchain_retry_count < 10;
+            const needsResign = requiresResign(tx.blockchain_status);
             const isRetrying = retryingId === tx.id;
 
             return (
@@ -146,7 +147,7 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
                 {/* STATUS Column */}
                 <td className="px-4 py-4 min-w-[280px]">
                   <div className="flex items-center gap-2">
-                    <StatusBadge status={tx.blockchain_status} />
+                    <StatusBadge status={tx.blockchain_status} showTooltip />
                     {tx.blockchain_signature && (
                       <a
                         href={`https://explorer.solana.com/tx/${tx.blockchain_signature}?cluster=devnet`}
@@ -159,9 +160,17 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
                       </a>
                     )}
                   </div>
+                  {/* Error message for failed status */}
                   {tx.blockchain_status === 'failed' && tx.blockchain_last_error && (
                     <p className="text-xs text-red-400 mt-1 break-words">
                       {tx.blockchain_last_error}
+                    </p>
+                  )}
+                  {/* v0.3.0: Special message for expired status */}
+                  {needsResign && (
+                    <p className="text-xs text-orange-400 mt-1 flex items-center gap-1">
+                      <AlertTriangle className="h-3 w-3" />
+                      Blockhash expired — please create a new transfer
                     </p>
                   )}
                 </td>
@@ -178,6 +187,21 @@ export function TransactionTable({ transactions, onRetrySuccess }: TransactionTa
                         className={`h-3 w-3 ${isRetrying ? 'animate-spin' : ''}`}
                       />
                       {isRetrying ? 'Retrying...' : 'Retry'}
+                    </button>
+                  )}
+                  {/* v0.3.0: Re-sign button for expired transactions */}
+                  {needsResign && (
+                    <button
+                      onClick={() => {
+                        // Scroll to top or focus on the transfer form
+                        window.scrollTo({ top: 0, behavior: 'smooth' });
+                        // Could also trigger a callback to pre-fill the form
+                      }}
+                      className="flex items-center gap-1 px-3 py-1.5 text-xs font-medium text-orange-400 bg-orange-500/10 hover:bg-orange-500/20 rounded-md transition-colors"
+                      title="Create a new transfer request with fresh signature"
+                    >
+                      <RefreshCw className="h-3 w-3" />
+                      Re-sign
                     </button>
                   )}
                 </td>

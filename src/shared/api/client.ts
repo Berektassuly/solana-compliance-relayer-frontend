@@ -9,13 +9,21 @@
 // Backend-aligned Domain Types
 // ============================================================================
 
+/**
+ * Blockchain submission status for a transfer.
+ * 
+ * v0.3.0: Added 'received' (new initial state) and 'expired' (blockhash timeout).
+ * 'pending' is now deprecated/legacy.
+ */
 export type BlockchainStatus = 
-  | 'pending' 
-  | 'pending_submission' 
-  | 'processing' 
-  | 'submitted' 
-  | 'confirmed' 
-  | 'failed';
+  | 'received'           // NEW: Initial state (persisted before compliance check)
+  | 'pending'            // DEPRECATED: Legacy alias for 'received'
+  | 'pending_submission' // Compliance approved, queued for worker
+  | 'processing'         // Worker claimed task
+  | 'submitted'          // On-chain, awaiting confirmation
+  | 'confirmed'          // TERMINAL: Finalized
+  | 'failed'             // TERMINAL: Max retries exceeded
+  | 'expired';           // TERMINAL: Blockhash expired (user must re-sign)
 
 export type ComplianceStatus = 'pending' | 'approved' | 'rejected';
 
@@ -249,14 +257,16 @@ export function getTransferAmount(details: TransferDetails): number | null {
 }
 
 /**
- * Check if a transfer is in a terminal state
+ * Check if a transfer is in a terminal state.
+ * v0.3.0: Added 'expired' as terminal state.
  */
 export function isTerminalStatus(status: BlockchainStatus): boolean {
-  return status === 'confirmed' || status === 'failed';
+  return status === 'confirmed' || status === 'failed' || status === 'expired';
 }
 
 /**
- * Check if a transfer can be retried
+ * Check if a transfer can be retried via the API.
+ * NOTE: 'expired' transfers CANNOT be retried - user must re-sign.
  */
 export function canRetry(transfer: TransferRequest): boolean {
   return (
@@ -266,16 +276,26 @@ export function canRetry(transfer: TransferRequest): boolean {
 }
 
 /**
+ * Check if a transfer requires user to re-sign (expired blockhash).
+ * The original signature is permanently invalid and a new request must be created.
+ */
+export function requiresResign(transfer: TransferRequest): boolean {
+  return transfer.blockchain_status === 'expired';
+}
+
+/**
  * Format transfer status for display
  */
 export function formatStatus(status: BlockchainStatus): string {
   const labels: Record<BlockchainStatus, string> = {
-    pending: 'Pending',
+    received: 'Validating',
+    pending: 'Validating',  // Legacy
     pending_submission: 'Queued',
     processing: 'Processing',
     submitted: 'Submitted',
     confirmed: 'Confirmed',
     failed: 'Failed',
+    expired: 'Expired',
   };
   return labels[status];
 }

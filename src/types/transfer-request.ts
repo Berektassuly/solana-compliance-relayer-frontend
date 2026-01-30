@@ -33,15 +33,23 @@ export interface TransferResult {
 
 /**
  * Blockchain submission status for a transfer.
- * Flow: pending → pending_submission → processing → submitted → confirmed | failed
+ * 
+ * Flow (v0.3.0 - Enterprise Reliability):
+ *   received → pending_submission → processing → submitted → confirmed
+ *                                                         ↘ expired (blockhash timeout)
+ *                                              ↘ failed (max retries)
+ * 
+ * Note: 'pending' is deprecated/legacy - new requests use 'received'.
  */
 export type BlockchainStatus =
-  | 'pending'
-  | 'pending_submission'
-  | 'processing'
-  | 'submitted'
-  | 'confirmed'
-  | 'failed';
+  | 'received'           // NEW: Initial state (persisted before compliance check)
+  | 'pending'            // DEPRECATED: Legacy alias for 'received'
+  | 'pending_submission' // Compliance approved, queued for worker
+  | 'processing'         // Worker claimed task, submission in progress
+  | 'submitted'          // On-chain, awaiting confirmation
+  | 'confirmed'          // TERMINAL: Finalized on blockchain
+  | 'failed'             // TERMINAL: Max retries exceeded (may be retryable)
+  | 'expired';           // TERMINAL: Blockhash expired (user must re-sign)
 
 /**
  * Compliance check status for a transfer.
@@ -148,14 +156,30 @@ export interface ApiErrorResponse {
 
 /**
  * Terminal states where polling should stop.
+ * v0.3.0: Added 'expired' as a terminal state.
  */
-export const TERMINAL_STATUSES: BlockchainStatus[] = ['confirmed', 'failed'];
+export const TERMINAL_STATUSES: BlockchainStatus[] = ['confirmed', 'failed', 'expired'];
 
 /**
  * Check if a status is terminal (no more updates expected).
  */
 export function isTerminalStatus(status: BlockchainStatus): boolean {
   return TERMINAL_STATUSES.includes(status);
+}
+
+/**
+ * Check if a transfer can be retried via the API.
+ * Note: 'expired' transfers CANNOT be retried - user must re-sign.
+ */
+export function canRetryTransfer(status: BlockchainStatus): boolean {
+  return status === 'pending_submission' || status === 'failed';
+}
+
+/**
+ * Check if a transfer requires user re-signing (expired blockhash).
+ */
+export function requiresResign(status: BlockchainStatus): boolean {
+  return status === 'expired';
 }
 
 /**
