@@ -119,8 +119,22 @@ export interface TransferRequest {
   blockchain_last_error: string | null;
   /** Next scheduled retry time (ISO 8601) */
   blockchain_next_retry_at: string | null;
+  /** Original transaction signature tracked for Jito double-spend protection */
+  original_tx_signature?: string | null;
+  /** Last error classification used by retry logic */
+  last_error_type?:
+    | 'none'
+    | 'jito_state_unknown'
+    | 'jito_bundle_failed'
+    | 'transaction_failed'
+    | 'network_error'
+    | 'validation_error';
+  /** Blockhash used in the latest known attempt */
+  blockhash_used?: string | null;
   /** UUID nonce used for replay protection (v2 API) */
   nonce: string | null;
+  /** Original client signature stored for auditing */
+  client_signature?: string | null;
   /** Creation timestamp (ISO 8601) */
   created_at: string;
   /** Last update timestamp (ISO 8601) */

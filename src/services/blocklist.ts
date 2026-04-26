@@ -2,7 +2,7 @@
  * API service for blocklist management (admin operations).
  */
 
-import { API_BASE_URL } from '@/lib/constants';
+const ADMIN_BLOCKLIST_API = '/api/admin/blocklist';
 
 // ============================================================================
 // Types
@@ -38,7 +38,7 @@ interface ApiErrorResponse {
  * Fetch all blocklisted addresses.
  */
 export async function fetchBlocklist(): Promise<ListBlocklistResponse> {
-  const response = await fetch(`${API_BASE_URL}/admin/blocklist`, {
+  const response = await fetch(ADMIN_BLOCKLIST_API, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -62,7 +62,7 @@ export async function addToBlocklist(
   address: string,
   reason: string
 ): Promise<BlocklistResponse> {
-  const response = await fetch(`${API_BASE_URL}/admin/blocklist`, {
+  const response = await fetch(ADMIN_BLOCKLIST_API, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -87,7 +87,7 @@ export async function removeFromBlocklist(
   address: string
 ): Promise<BlocklistResponse> {
   const response = await fetch(
-    `${API_BASE_URL}/admin/blocklist/${encodeURIComponent(address)}`,
+    `${ADMIN_BLOCKLIST_API}/${encodeURIComponent(address)}`,
     {
       method: 'DELETE',
       headers: {
