@@ -23,7 +23,7 @@ import {
   Cell,
 } from 'recharts';
 import type { SecurityFlag, VolumeDataPoint, AssetDistribution } from '@/types/analytics.types';
-import { mockAnalyticsData } from './mockAnalyticsData';
+
 
 // ============================================================================
 // Chart Color Definitions
@@ -119,8 +119,7 @@ interface AssetDistributionChartProps {
 }
 
 function AssetDistributionChart({ data }: AssetDistributionChartProps) {
-  // Use live data if available, fallback to mock
-  const chartData = data.length > 0 ? data : mockAnalyticsData.assetDistribution;
+  const chartData = data;
 
   return (
     <div className="flex-1 min-w-0 h-full flex flex-col">
@@ -253,8 +252,7 @@ interface RecentFlagsProps {
 }
 
 function RecentFlags({ flags }: RecentFlagsProps) {
-  // Use live data if available, fallback to mock
-  const displayFlags = flags.length > 0 ? flags : mockAnalyticsData.recentFlags;
+  const displayFlags = flags;
 
   return (
     <div className="flex-1 min-w-0 h-full flex flex-col">

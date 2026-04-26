@@ -14,7 +14,6 @@ import {
   XCircle, 
   AlertCircle,
   RefreshCw,
-  Cpu,
   Shield,
 } from 'lucide-react';
 import { getHealth, type HealthResponse } from '@/shared/api';
@@ -241,20 +240,17 @@ export function OperationalDashboard() {
           
           <div className="space-y-3">
             <HealthIndicator 
-              status={health?.database || 'healthy'} 
+              status={health?.database ?? 'degraded'} 
               label="Database" 
             />
             <HealthIndicator 
-              status={health?.blockchain || 'healthy'} 
+              status={health?.blockchain ?? 'degraded'} 
               label="Blockchain" 
             />
-            <div className="flex items-center gap-2">
-              <div className="p-1 rounded bg-status-confirmed/20">
-                <Cpu className="h-3 w-3 text-status-confirmed" />
-              </div>
-              <span className="text-sm text-muted">Range API</span>
-              <span className="text-sm font-medium text-status-confirmed">Healthy</span>
-            </div>
+            <HealthIndicator 
+              status={health?.status ?? 'degraded'} 
+              label="Overall" 
+            />
           </div>
         </div>
         
