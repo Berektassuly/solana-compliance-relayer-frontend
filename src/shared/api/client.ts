@@ -5,6 +5,8 @@
  * Directly maps to backend API endpoints.
  */
 
+import { API_BASE_URL } from '@/lib/constants';
+
 // ============================================================================
 // Backend-aligned Domain Types
 // ============================================================================
@@ -122,8 +124,6 @@ export interface RateLimitResponse extends ErrorResponse {
 // ============================================================================
 // API Client Configuration
 // ============================================================================
-
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 class ApiClientError extends Error {
   constructor(

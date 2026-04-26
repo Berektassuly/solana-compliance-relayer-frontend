@@ -1,15 +1,17 @@
 import type { Asset } from '@/types/transaction';
 
 // API Configuration
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+// Configure this in .env.local as NEXT_PUBLIC_API_URL. When omitted, requests
+// are same-origin so the UI never embeds an environment-specific backend host.
+export const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 // Theme Colors (also in tailwind.config.ts)
 export const COLORS = {
-  background: '#0b0f14',
-  panel: '#111722',
-  border: '#1f2a3a',
-  primary: '#7c3aed',
-  primaryDark: '#5b21b6',
+  background: '#fdf8f8',
+  panel: '#ffffff',
+  border: '#c8c5ca',
+  primary: '#1c1b1b',
+  primaryDark: '#09090b',
 } as const;
 
 // Available Assets

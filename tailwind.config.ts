@@ -5,40 +5,39 @@ const config: Config = {
     "./src/pages/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/components/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/features/**/*.{js,ts,jsx,tsx,mdx}",
+    "./src/widgets/**/*.{js,ts,jsx,tsx,mdx}",
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
     extend: {
       colors: {
-        // DeFi Dark Theme
-        background: "#0b0f14",
-        panel: "#111722",
-        "panel-hover": "#1a2332",
-        border: "#1f2a3a",
-        "border-light": "#2d3a4d",
-        // Purple Gradient
+        // Operations console light theme
+        background: "#fdf8f8",
+        panel: "#ffffff",
+        "panel-hover": "#fafafa",
+        border: "#c8c5ca",
+        "border-light": "#e4e4e7",
         primary: {
-          DEFAULT: "#7c3aed",
-          dark: "#5b21b6",
-          light: "#a78bfa",
+          DEFAULT: "#1c1b1b",
+          dark: "#09090b",
+          light: "#47464a",
         },
-        // Status Colors
         status: {
-          pending: "#eab308",
-          confirmed: "#22c55e",
-          failed: "#ef4444",
+          pending: "#78767b",
+          confirmed: "#00714d",
+          failed: "#ba1a1a",
         },
-        // Text
-        foreground: "#ffffff",
-        muted: "#94a3b8",
-        "muted-dark": "#64748b",
+        foreground: "#1c1b1b",
+        muted: "#71717a",
+        "muted-dark": "#47464a",
       },
       fontFamily: {
-        sans: ["Inter", "system-ui", "sans-serif"],
+        sans: ["Inter", "Arial", "sans-serif"],
+        mono: ["JetBrains Mono", "ui-monospace", "SFMono-Regular", "monospace"],
       },
       backgroundImage: {
-        "gradient-primary": "linear-gradient(135deg, #7c3aed 0%, #5b21b6 100%)",
-        "gradient-radial": "radial-gradient(ellipse at top, #1a1f2e 0%, #0b0f14 50%)",
+        "gradient-primary": "linear-gradient(135deg, #1c1b1b 0%, #09090b 100%)",
+        "gradient-radial": "linear-gradient(90deg, #fdf8f8 0%, #fdf8f8 100%)",
       },
       animation: {
         "pulse-slow": "pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite",

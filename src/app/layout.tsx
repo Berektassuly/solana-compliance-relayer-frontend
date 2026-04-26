@@ -3,7 +3,7 @@ import './globals.css';
 
 export const metadata: Metadata = {
   title: 'Solana Compliance Relayer',
-  description: 'Privacy-preserving compliance-verified transfers on Solana',
+  description: 'Operational compliance dashboard for Solana payment settlement',
   keywords: ['Solana', 'DeFi', 'Privacy', 'Compliance', 'Relayer'],
 };
 
@@ -13,7 +13,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en" className="dark">
+    <html lang="en">
       <body className="antialiased">{children}</body>
     </html>
   );
