@@ -78,118 +78,18 @@ interface TraceEvent {
   muted?: boolean;
 }
 
-const FALLBACK_HEALTH: HealthResponse = {
-  status: 'healthy',
-  database: 'healthy',
+/** Safe initial health used while the first /health fetch is in-flight.
+ *  Does NOT call Date.now() at module scope (avoids SSR hydration mismatch). */
+const INITIAL_HEALTH: HealthResponse = {
+  status: 'degraded',
+  database: 'degraded',
   blockchain: 'degraded',
-  timestamp: new Date().toISOString(),
+  timestamp: '1970-01-01T00:00:00.000Z',
   version: '0.3.0',
 };
 
-const DEMO_QUEUE_METRICS: QueueMetric[] = [
-  { label: 'PENDING', value: '1,204' },
-  { label: 'PROCESSING', value: '342', tone: 'healthy' },
-  { label: 'FAILED (24H)', value: '12', tone: 'danger' },
-  { label: 'BLOCKED', value: '5' },
-];
-
-const DEMO_QUEUE_ROWS: QueueRow[] = [
-  {
-    batch: 'Batch #893',
-    status: 'pending_submission',
-    subtitle: 'Est. ~45s',
-    amount: '124.500 USDC',
-    fee: 'Fee: 0.04 SOL',
-    tone: 'neutral',
-    icon: 'pending',
-  },
-  {
-    batch: 'Batch #892',
-    status: 'submitted',
-    subtitle: 'Awaiting Quick Conf.',
-    amount: '350.000 USDC',
-    fee: 'Sig: 5Y78...2LJ',
-    tone: 'healthy',
-    icon: 'approved',
-  },
-];
-
-const DEMO_TRANSACTIONS: TransactionRow[] = [
-  {
-    id: 'tx_8af92',
-    merchant: 'Acme Corp',
-    sender: '8xPj...3aKq',
-    amount: '1,500.00 USDC',
-    complianceLabel: 'Clear',
-    complianceTone: 'healthy',
-    settlementLabel: 'confirmed',
-    settlementTone: 'healthy',
-  },
-  {
-    id: 'tx_3d11c',
-    merchant: 'Global Trade Inc',
-    sender: '2dQk...9YWs',
-    amount: '45,000.00 USDC',
-    complianceLabel: 'Flagged',
-    complianceTone: 'danger',
-    settlementLabel: 'rejected_before_settlement',
-    settlementTone: 'danger',
-    muted: true,
-  },
-  {
-    id: 'tx_74de1',
-    merchant: 'Boutique SaaS',
-    sender: '5jLp...1xZr',
-    amount: '299.00 USDC',
-    complianceLabel: 'Clear',
-    complianceTone: 'healthy',
-    settlementLabel: 'pending_submission',
-    settlementTone: 'neutral',
-  },
-  {
-    id: 'tx_a26b9',
-    merchant: 'Neon Services',
-    sender: '9nRt...4pMq',
-    amount: '1,250.50 USDC',
-    complianceLabel: 'Clear',
-    complianceTone: 'healthy',
-    settlementLabel: 'failed',
-    settlementTone: 'danger',
-  },
-];
-
-const DEMO_TRACE_EVENTS: TraceEvent[] = [
-  {
-    time: '14:02:45.102',
-    provider: 'Helius',
-    title: 'ACCOUNT_UPDATE',
-    detail: 'Owner: Tokenkeg...',
-    tone: 'healthy',
-  },
-  {
-    time: '14:02:44.890',
-    provider: 'QuickNode',
-    title: 'SLOT_SUBSCRIBE',
-    detail: 'Slot: 245,891,002',
-    tone: 'neutral',
-  },
-  {
-    time: '14:02:42.115',
-    provider: 'Helius',
-    title: 'TX_ERROR',
-    detail: 'Err: Insufficient Funds',
-    tone: 'danger',
-  },
-  {
-    time: '14:02:40.001',
-    provider: 'Internal',
-    title: 'Heartbeat OK',
-    tone: 'neutral',
-    muted: true,
-  },
-];
-
-const MERCHANT_NAMES = ['Acme Corp', 'Global Trade Inc', 'Boutique SaaS', 'Neon Services'];
+/** Fixed-locale number formatter to avoid SSR/client hydration mismatch. */
+const fmt = new Intl.NumberFormat('en-US');
 
 const chipStyles: Record<ChipTone, { shell: string; dot: string; text: string }> = {
   healthy: {
@@ -311,10 +211,6 @@ function isWithinLast24Hours(isoDate: string): boolean {
 }
 
 function buildQueueMetrics(transfers: TransferRequest[]): QueueMetric[] {
-  if (transfers.length === 0) {
-    return DEMO_QUEUE_METRICS;
-  }
-
   const pending = transfers.filter((transfer) =>
     ['received', 'pending', 'pending_submission'].includes(transfer.blockchain_status)
   ).length;
@@ -329,10 +225,10 @@ function buildQueueMetrics(transfers: TransferRequest[]): QueueMetric[] {
   const blocked = transfers.filter((transfer) => transfer.compliance_status === 'rejected').length;
 
   return [
-    { label: 'PENDING', value: pending.toLocaleString() },
-    { label: 'PROCESSING', value: processing.toLocaleString(), tone: 'healthy' },
-    { label: 'FAILED (24H)', value: failed24h.toLocaleString(), tone: 'danger' },
-    { label: 'BLOCKED', value: blocked.toLocaleString() },
+    { label: 'PENDING', value: fmt.format(pending) },
+    { label: 'PROCESSING', value: fmt.format(processing), tone: 'healthy' },
+    { label: 'FAILED (24H)', value: fmt.format(failed24h), tone: 'danger' },
+    { label: 'BLOCKED', value: fmt.format(blocked) },
   ];
 }
 
@@ -361,7 +257,7 @@ function buildQueueRows(transfers: TransferRequest[]): QueueRow[] {
       icon: transfer.blockchain_status === 'submitted' ? 'approved' : 'pending',
     }));
 
-  return liveRows.length > 0 ? liveRows : DEMO_QUEUE_ROWS;
+  return liveRows;
 }
 
 function complianceLabel(status: ComplianceStatus): string {
@@ -384,15 +280,11 @@ function settlementLabel(transfer: TransferRequest): string {
 }
 
 function buildTransactionRows(transfers: TransferRequest[]): TransactionRow[] {
-  if (transfers.length === 0) {
-    return DEMO_TRANSACTIONS;
-  }
-
-  return transfers.slice(0, 12).map((transfer, index) => {
+  return transfers.slice(0, 12).map((transfer) => {
     const settlement = settlementLabel(transfer);
     return {
       id: `tx_${transfer.id.slice(0, 5)}`,
-      merchant: MERCHANT_NAMES[index % MERCHANT_NAMES.length],
+      merchant: formatAddress(transfer.to_address, 4),
       sender: formatAddress(transfer.from_address, 4),
       amount: formatTransferAmount(transfer),
       complianceLabel: complianceLabel(transfer.compliance_status),
@@ -408,11 +300,7 @@ function buildTransactionRows(transfers: TransferRequest[]): TransactionRow[] {
 }
 
 function buildTraceEvents(transfers: TransferRequest[]): TraceEvent[] {
-  if (transfers.length === 0) {
-    return DEMO_TRACE_EVENTS;
-  }
-
-  const events = transfers.slice(0, 4).map((transfer, index): TraceEvent => {
+  return transfers.slice(0, 4).map((transfer, index): TraceEvent => {
     const provider = index % 2 === 0 ? 'Helius' : 'QuickNode';
     const tone = transfer.blockchain_status === 'failed' ? 'danger' : statusTone(transfer.blockchain_status);
     const title =
@@ -438,8 +326,6 @@ function buildTraceEvents(transfers: TransferRequest[]): TraceEvent[] {
       muted: index === 3,
     };
   });
-
-  return events.length > 0 ? events : DEMO_TRACE_EVENTS;
 }
 
 function formatTraceTime(isoDate: string): string {
@@ -981,7 +867,7 @@ function TransactionHistoryPanel({
       </div>
       <div className="flex h-[44px] items-center justify-between border-t border-[#e4e4e7] bg-[#fafafa] px-[16px]">
         <div className="text-[12px] leading-[18px] text-[#47464a]">
-          Showing {rows.length} of {total.toLocaleString()} transactions
+          Showing {rows.length} of {fmt.format(total)} transactions
         </div>
         <div className="flex items-center gap-[4px]">
           <button
@@ -1105,11 +991,11 @@ export function OperationsDashboard() {
   const { health, transfers, isLoading, error, lastUpdated, refresh } = useOperationsData();
   const [query, setQuery] = useState('');
 
-  const displayHealth = health ?? FALLBACK_HEALTH;
+  const displayHealth = health ?? INITIAL_HEALTH;
   const transactionRows = useMemo(() => buildTransactionRows(transfers), [transfers]);
   const filteredRows = useMemo(() => filterRows(transactionRows, query), [transactionRows, query]);
   const traceEvents = useMemo(() => buildTraceEvents(transfers), [transfers]);
-  const totalTransactions = transfers.length > 0 ? transfers.length : 1_204;
+  const totalTransactions = transfers.length;
 
   return (
     <div className="min-h-screen bg-[#fdf8f8] text-[#1c1b1b]">
