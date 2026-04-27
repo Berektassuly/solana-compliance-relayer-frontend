@@ -3,8 +3,11 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
+  BookOpen,
   CheckCircle2,
   Database,
+  HelpCircle,
+  ListChecks,
   Loader2,
   Plus,
   RefreshCw,
@@ -45,6 +48,33 @@ import {
   titleCaseStatus,
 } from './operations-utils';
 
+const SETTINGS_SECTIONS = [
+  { id: 'add-blocklist-rule', label: 'Add Blocklist Rule', icon: Plus },
+  { id: 'runtime', label: 'Runtime', icon: Database },
+  { id: 'docs', label: 'Docs', icon: BookOpen },
+  { id: 'support', label: 'Support', icon: HelpCircle },
+  { id: 'current-blocklist', label: 'Current Blocklist', icon: ListChecks },
+] as const;
+
+type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]['id'];
+
+const DEFAULT_SETTINGS_SECTION: SettingsSectionId = 'current-blocklist';
+
+const SETTINGS_HASH_ALIASES: Record<string, SettingsSectionId> = {
+  'add-blocklist-rule': 'add-blocklist-rule',
+  add: 'add-blocklist-rule',
+  blocklist: 'current-blocklist',
+  'current-blocklist': 'current-blocklist',
+  docs: 'docs',
+  runtime: 'runtime',
+  support: 'support',
+};
+
+function sectionFromHash(hash: string): SettingsSectionId {
+  const key = hash.replace(/^#/, '').toLowerCase();
+  return SETTINGS_HASH_ALIASES[key] ?? DEFAULT_SETTINGS_SECTION;
+}
+
 function useHealthSnapshot() {
   const [health, setHealth] = useState<HealthResponse | null>(null);
 
@@ -77,10 +107,58 @@ function SettingsHeader({ health }: { health: HealthResponse }) {
           Settings
         </h1>
         <p className="text-[13px] leading-[18px] text-[#47464a]">
-          Manage compliance rules, blocklist entries, and runtime visibility.
+          Manage one operator setting area at a time.
         </p>
       </div>
       <StatusChip label={`Admin API: ${healthLabel(health.status, 'Healthy')}`} tone={statusTone(health.status)} />
+    </div>
+  );
+}
+
+function SettingsSubnav({
+  activeSection,
+  blocklistCount,
+  blocklistLoading,
+  onChange,
+}: {
+  activeSection: SettingsSectionId;
+  blocklistCount: number;
+  blocklistLoading: boolean;
+  onChange: (section: SettingsSectionId) => void;
+}) {
+  return (
+    <div className="overflow-x-auto border border-[#c8c5ca] bg-white p-[4px]" aria-label="Settings sections">
+      <div className="flex min-w-max gap-[4px]">
+        {SETTINGS_SECTIONS.map((section) => {
+          const Icon = section.icon;
+          const active = activeSection === section.id;
+          return (
+            <button
+              key={section.id}
+              type="button"
+              aria-pressed={active}
+              onClick={() => onChange(section.id)}
+              className={`inline-flex h-[40px] items-center justify-center gap-[8px] rounded-[2px] px-[12px] text-[13px] font-medium leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181b] ${
+                active
+                  ? 'bg-[#18181b] text-white'
+                  : 'text-[#47464a] hover:bg-[#fafafa] hover:text-[#18181b]'
+              }`}
+            >
+              <Icon className="h-[14px] w-[14px]" aria-hidden="true" />
+              <span>{section.label}</span>
+              {section.id === 'current-blocklist' && !blocklistLoading && (
+                <span
+                  className={`min-w-[20px] rounded-[2px] px-[5px] py-[1px] text-center font-mono text-[11px] leading-4 ${
+                    active ? 'bg-white/15 text-white' : 'bg-[#e5e2e1] text-[#47464a]'
+                  }`}
+                >
+                  {blocklistCount}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -312,7 +390,7 @@ function RuntimePanel({ health }: { health: HealthResponse }) {
 
 function DocsPanel() {
   return (
-    <Panel title="Docs" bodyClassName="p-[16px]" className="scroll-mt-[80px]" >
+    <Panel title="Docs" bodyClassName="p-[16px]" className="scroll-mt-[80px]">
       <div id="docs" className="space-y-[10px] text-[12px] leading-4 text-[#47464a]">
         <KeyValue label="OpenAPI" value="/swagger-ui" mono />
         <KeyValue label="Health" value="GET /health" mono />
@@ -347,6 +425,7 @@ export function SettingsScreen() {
   const [success, setSuccess] = useState<string | null>(null);
   const [pendingRemove, setPendingRemove] = useState<string | null>(null);
   const [deletingAddress, setDeletingAddress] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<SettingsSectionId>(DEFAULT_SETTINGS_SECTION);
 
   const sortedEntries = useMemo(
     () => [...entries].sort((a, b) => a.address.localeCompare(b.address)),
@@ -373,6 +452,26 @@ export function SettingsScreen() {
     return () => window.clearTimeout(timeout);
   }, [loadBlocklist]);
 
+  useEffect(() => {
+    const syncSectionFromHash = () => {
+      setActiveSection(sectionFromHash(window.location.hash));
+    };
+    syncSectionFromHash();
+    window.addEventListener('hashchange', syncSectionFromHash);
+    window.addEventListener('popstate', syncSectionFromHash);
+    return () => {
+      window.removeEventListener('hashchange', syncSectionFromHash);
+      window.removeEventListener('popstate', syncSectionFromHash);
+    };
+  }, []);
+
+  const handleSectionChange = (section: SettingsSectionId) => {
+    setActiveSection(section);
+    const url = new URL(window.location.href);
+    url.hash = section;
+    window.history.pushState(null, '', url);
+  };
+
   const handleCreated = async (message: string) => {
     setSuccess(message);
     setTimeout(() => setSuccess(null), 5000);
@@ -394,6 +493,50 @@ export function SettingsScreen() {
     }
   };
 
+  const activePanel = (() => {
+    switch (activeSection) {
+      case 'add-blocklist-rule':
+        return (
+          <div className="max-w-[680px]">
+            <BlocklistForm onCreated={handleCreated} />
+          </div>
+        );
+      case 'runtime':
+        return (
+          <div className="max-w-[760px]">
+            <RuntimePanel health={health} />
+          </div>
+        );
+      case 'docs':
+        return (
+          <div className="max-w-[760px]">
+            <DocsPanel />
+          </div>
+        );
+      case 'support':
+        return (
+          <div className="max-w-[760px]">
+            <SupportPanel />
+          </div>
+        );
+      case 'current-blocklist':
+      default:
+        return (
+          <BlocklistTable
+            entries={sortedEntries}
+            isLoading={isLoading}
+            error={error}
+            deletingAddress={deletingAddress}
+            pendingRemove={pendingRemove}
+            onRefresh={() => loadBlocklist(true)}
+            onRequestRemove={setPendingRemove}
+            onCancelRemove={() => setPendingRemove(null)}
+            onConfirmRemove={handleRemove}
+          />
+        );
+    }
+  })();
+
   return (
     <OperationsShell health={health}>
       <SettingsHeader health={health} />
@@ -403,25 +546,14 @@ export function SettingsScreen() {
           {success}
         </div>
       )}
-
-      <div className="grid gap-[24px] xl:grid-cols-[380px_1fr]">
-        <div className="space-y-[24px]">
-          <BlocklistForm onCreated={handleCreated} />
-          <RuntimePanel health={health} />
-          <DocsPanel />
-          <SupportPanel />
-        </div>
-        <BlocklistTable
-          entries={sortedEntries}
-          isLoading={isLoading}
-          error={error}
-          deletingAddress={deletingAddress}
-          pendingRemove={pendingRemove}
-          onRefresh={() => loadBlocklist(true)}
-          onRequestRemove={setPendingRemove}
-          onCancelRemove={() => setPendingRemove(null)}
-          onConfirmRemove={handleRemove}
-        />
+      <SettingsSubnav
+        activeSection={activeSection}
+        blocklistCount={sortedEntries.length}
+        blocklistLoading={isLoading}
+        onChange={handleSectionChange}
+      />
+      <div id={`settings-section-${activeSection}`} className="min-w-0 scroll-mt-[88px]">
+        {activePanel}
       </div>
     </OperationsShell>
   );

@@ -34,7 +34,7 @@ function isActivePath(pathname: string, href: string) {
   return pathname.startsWith(href);
 }
 
-function TopAppBar({ pathname }: { pathname: string }) {
+function TopAppBar() {
   return (
     <header className="fixed left-0 top-0 z-50 flex h-[56px] w-full items-center justify-between border-b border-[#e4e4e7] bg-white/80 px-[16px] backdrop-blur-[6px] sm:px-[24px]">
       <div className="flex min-w-0 items-center gap-[16px]">
@@ -44,25 +44,6 @@ function TopAppBar({ pathname }: { pathname: string }) {
         >
           SOLANA COMPLIANCE RELAYER
         </Link>
-        <nav className="hidden items-center gap-[4px] xl:flex" aria-label="Primary navigation">
-          {navItems.map((item) => {
-            const active = isActivePath(pathname, item.href);
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                aria-current={active ? 'page' : undefined}
-                className={`flex h-[38px] items-center px-[12px] text-[14px] leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181b] ${
-                  active
-                    ? 'border-b-2 border-[#18181b] font-bold text-[#18181b]'
-                    : 'text-[#71717a] hover:text-[#18181b]'
-                }`}
-              >
-                {item.label}
-              </Link>
-            );
-          })}
-        </nav>
       </div>
       <div className="flex items-center gap-[10px] sm:gap-[16px]">
         <div className="hidden items-center gap-[4px] sm:flex">
@@ -201,7 +182,7 @@ export function OperationsShell({
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#fdf8f8] text-[#1c1b1b]">
-      <TopAppBar pathname={pathname} />
+      <TopAppBar />
       <SideBar pathname={pathname} health={health} />
       <main className="min-h-screen overflow-x-hidden pt-[56px] lg:pl-[256px]">
         <div className="flex min-h-[calc(100vh-56px)] min-w-0 flex-col gap-[24px] overflow-x-hidden px-[16px] pb-[82px] pt-[20px] sm:px-[24px] lg:pb-[24px]">
