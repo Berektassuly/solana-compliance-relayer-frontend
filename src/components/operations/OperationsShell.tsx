@@ -1,15 +1,14 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { Fragment, useCallback, useEffect, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   Activity,
   Bell,
-  BookOpen,
+  ChevronDown,
   ClipboardList,
   Gauge,
-  HelpCircle,
   Server,
   Settings,
   ShieldAlert,
@@ -29,9 +28,39 @@ const navItems = [
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 
+const settingsMenuItems = [
+  { id: 'add-blocklist-rule', label: 'Add Blocklist Rule' },
+  { id: 'runtime', label: 'Runtime' },
+  { id: 'docs', label: 'Docs' },
+  { id: 'support', label: 'Support' },
+  { id: 'current-blocklist', label: 'Current Blocklist' },
+] as const;
+
+type SettingsMenuItemId = (typeof settingsMenuItems)[number]['id'];
+
+const settingsSectionAliases: Record<string, SettingsMenuItemId> = {
+  'add-blocklist-rule': 'add-blocklist-rule',
+  add: 'add-blocklist-rule',
+  blocklist: 'current-blocklist',
+  'current-blocklist': 'current-blocklist',
+  docs: 'docs',
+  runtime: 'runtime',
+  support: 'support',
+};
+
 function isActivePath(pathname: string, href: string) {
   if (href === '/dashboard') return pathname === '/dashboard' || pathname === '/';
   return pathname.startsWith(href);
+}
+
+function settingsSectionFromValue(value: string | null | undefined): SettingsMenuItemId {
+  const key = (value ?? '').replace(/^#/, '').toLowerCase();
+  return settingsSectionAliases[key] ?? 'current-blocklist';
+}
+
+function settingsSectionFromLocation() {
+  const params = new URLSearchParams(window.location.search);
+  return settingsSectionFromValue(params.get('section') ?? window.location.hash);
 }
 
 function TopAppBar() {
@@ -72,9 +101,17 @@ function TopAppBar() {
 function SideBar({
   pathname,
   health,
+  activeSettingsSection,
+  settingsBlocklistCount,
+  settingsBlocklistLoading,
+  onSettingsSectionSelect,
 }: {
   pathname: string;
   health: HealthResponse;
+  activeSettingsSection: SettingsMenuItemId;
+  settingsBlocklistCount?: number;
+  settingsBlocklistLoading?: boolean;
+  onSettingsSectionSelect: (section: SettingsMenuItemId) => void;
 }) {
   return (
     <aside className="fixed left-0 top-[56px] z-40 hidden h-[calc(100vh-56px)] w-[256px] flex-col gap-[8px] overflow-hidden border-r border-[#e4e4e7] bg-[#fafafa] px-[16px] py-[24px] lg:flex">
@@ -105,40 +142,57 @@ function SideBar({
         {navItems.map((item) => {
           const Icon = item.icon;
           const active = isActivePath(pathname, item.href);
+          const expandedSettings = item.href === '/dashboard/settings' && active;
           return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? 'page' : undefined}
-              className={`flex h-[40px] items-center gap-[12px] rounded-[6px] px-[12px] text-[13px] leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181b] ${
-                active
-                  ? 'bg-[rgba(228,228,231,0.7)] text-[#18181b]'
-                  : 'text-[#71717a] hover:bg-[rgba(228,228,231,0.35)] hover:text-[#18181b]'
-              }`}
-            >
-              <Icon className="h-[15px] w-[15px]" aria-hidden="true" />
-              {item.label}
-            </Link>
+            <Fragment key={item.href}>
+              <Link
+                href={item.href}
+                aria-current={active && !expandedSettings ? 'page' : undefined}
+                className={`flex h-[40px] items-center gap-[12px] rounded-[6px] px-[12px] text-[13px] leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181b] ${
+                  active
+                    ? 'bg-[rgba(228,228,231,0.7)] text-[#18181b]'
+                    : 'text-[#71717a] hover:bg-[rgba(228,228,231,0.35)] hover:text-[#18181b]'
+                }`}
+              >
+                <Icon className="h-[15px] w-[15px]" aria-hidden="true" />
+                <span className="min-w-0 flex-1">{item.label}</span>
+                {expandedSettings && (
+                  <ChevronDown className="h-[14px] w-[14px] text-[#71717a]" aria-hidden="true" />
+                )}
+              </Link>
+              {expandedSettings && (
+                <div className="ml-[22px] border-l border-[#e4e4e7] py-[3px] pl-[10px]">
+                  {settingsMenuItems.map((section) => {
+                    const sectionActive = activeSettingsSection === section.id;
+                    return (
+                      <button
+                        key={section.id}
+                        aria-current={sectionActive ? 'page' : undefined}
+                        onClick={() => onSettingsSectionSelect(section.id)}
+                        type="button"
+                        className={`flex min-h-[34px] items-center justify-between gap-[8px] rounded-[2px] px-[12px] py-[7px] text-[13px] leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181b] ${
+                          sectionActive
+                            ? 'bg-[#ececec] font-semibold text-[#18181b]'
+                            : 'font-medium text-[#47464a] hover:bg-[#f7f7f8] hover:text-[#18181b]'
+                        }`}
+                      >
+                        <span className="min-w-0 truncate">{section.label}</span>
+                        {section.id === 'current-blocklist' &&
+                          !settingsBlocklistLoading &&
+                          typeof settingsBlocklistCount === 'number' && (
+                            <span className="min-w-[20px] rounded-[2px] bg-white px-[5px] py-[1px] text-center font-mono text-[11px] leading-4 text-[#47464a]">
+                              {settingsBlocklistCount}
+                            </span>
+                          )}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </Fragment>
           );
         })}
       </nav>
-
-      <div className="w-full border-t border-[#e4e4e7] pt-[17px]">
-        <Link
-          href="/dashboard/settings#docs"
-          className="flex h-[40px] items-center gap-[12px] rounded-[6px] px-[12px] text-[13px] leading-5 text-[#71717a] hover:bg-[rgba(228,228,231,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181b]"
-        >
-          <BookOpen className="h-[15px] w-[15px]" aria-hidden="true" />
-          Docs
-        </Link>
-        <Link
-          href="/dashboard/settings#support"
-          className="flex h-[40px] items-center gap-[12px] rounded-[6px] px-[12px] text-[13px] leading-5 text-[#71717a] hover:bg-[rgba(228,228,231,0.35)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181b]"
-        >
-          <HelpCircle className="h-[15px] w-[15px]" aria-hidden="true" />
-          Support
-        </Link>
-      </div>
     </aside>
   );
 }
@@ -173,17 +227,52 @@ function MobileNav({ pathname }: { pathname: string }) {
 
 export function OperationsShell({
   health = INITIAL_HEALTH,
+  settingsBlocklistCount,
+  settingsBlocklistLoading,
   children,
 }: {
   health?: HealthResponse;
+  settingsBlocklistCount?: number;
+  settingsBlocklistLoading?: boolean;
   children: ReactNode;
 }) {
   const pathname = usePathname();
+  const [activeSettingsSection, setActiveSettingsSection] =
+    useState<SettingsMenuItemId>('current-blocklist');
+
+  useEffect(() => {
+    const syncSettingsSection = () => {
+      setActiveSettingsSection(settingsSectionFromLocation());
+    };
+    syncSettingsSection();
+    window.addEventListener('popstate', syncSettingsSection);
+    window.addEventListener('operations-settings-section-change', syncSettingsSection);
+    return () => {
+      window.removeEventListener('popstate', syncSettingsSection);
+      window.removeEventListener('operations-settings-section-change', syncSettingsSection);
+    };
+  }, [pathname]);
+
+  const handleSettingsSectionSelect = useCallback((section: SettingsMenuItemId) => {
+    setActiveSettingsSection(section);
+    const url = new URL(window.location.href);
+    url.searchParams.set('section', section);
+    url.hash = '';
+    window.history.pushState(null, '', url);
+    window.dispatchEvent(new CustomEvent('operations-settings-section-change'));
+  }, []);
 
   return (
     <div className="min-h-screen overflow-x-hidden bg-[#fdf8f8] text-[#1c1b1b]">
       <TopAppBar />
-      <SideBar pathname={pathname} health={health} />
+      <SideBar
+        pathname={pathname}
+        health={health}
+        activeSettingsSection={activeSettingsSection}
+        settingsBlocklistCount={settingsBlocklistCount}
+        settingsBlocklistLoading={settingsBlocklistLoading}
+        onSettingsSectionSelect={handleSettingsSectionSelect}
+      />
       <main className="min-h-screen overflow-x-hidden pt-[56px] lg:pl-[256px]">
         <div className="flex min-h-[calc(100vh-56px)] min-w-0 flex-col gap-[24px] overflow-x-hidden px-[16px] pb-[82px] pt-[20px] sm:px-[24px] lg:pb-[24px]">
           {children}

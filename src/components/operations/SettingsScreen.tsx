@@ -3,11 +3,8 @@
 import { FormEvent, useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
-  BookOpen,
   CheckCircle2,
   Database,
-  HelpCircle,
-  ListChecks,
   Loader2,
   Plus,
   RefreshCw,
@@ -48,19 +45,16 @@ import {
   titleCaseStatus,
 } from './operations-utils';
 
-const SETTINGS_SECTIONS = [
-  { id: 'add-blocklist-rule', label: 'Add Blocklist Rule', icon: Plus },
-  { id: 'runtime', label: 'Runtime', icon: Database },
-  { id: 'docs', label: 'Docs', icon: BookOpen },
-  { id: 'support', label: 'Support', icon: HelpCircle },
-  { id: 'current-blocklist', label: 'Current Blocklist', icon: ListChecks },
-] as const;
-
-type SettingsSectionId = (typeof SETTINGS_SECTIONS)[number]['id'];
+type SettingsSectionId =
+  | 'add-blocklist-rule'
+  | 'runtime'
+  | 'docs'
+  | 'support'
+  | 'current-blocklist';
 
 const DEFAULT_SETTINGS_SECTION: SettingsSectionId = 'current-blocklist';
 
-const SETTINGS_HASH_ALIASES: Record<string, SettingsSectionId> = {
+const SETTINGS_SECTION_ALIASES: Record<string, SettingsSectionId> = {
   'add-blocklist-rule': 'add-blocklist-rule',
   add: 'add-blocklist-rule',
   blocklist: 'current-blocklist',
@@ -70,9 +64,14 @@ const SETTINGS_HASH_ALIASES: Record<string, SettingsSectionId> = {
   support: 'support',
 };
 
-function sectionFromHash(hash: string): SettingsSectionId {
-  const key = hash.replace(/^#/, '').toLowerCase();
-  return SETTINGS_HASH_ALIASES[key] ?? DEFAULT_SETTINGS_SECTION;
+function sectionFromValue(value: string | null | undefined): SettingsSectionId {
+  const key = (value ?? '').replace(/^#/, '').toLowerCase();
+  return SETTINGS_SECTION_ALIASES[key] ?? DEFAULT_SETTINGS_SECTION;
+}
+
+function sectionFromLocation() {
+  const params = new URLSearchParams(window.location.search);
+  return sectionFromValue(params.get('section') ?? window.location.hash);
 }
 
 function useHealthSnapshot() {
@@ -111,54 +110,6 @@ function SettingsHeader({ health }: { health: HealthResponse }) {
         </p>
       </div>
       <StatusChip label={`Admin API: ${healthLabel(health.status, 'Healthy')}`} tone={statusTone(health.status)} />
-    </div>
-  );
-}
-
-function SettingsSubnav({
-  activeSection,
-  blocklistCount,
-  blocklistLoading,
-  onChange,
-}: {
-  activeSection: SettingsSectionId;
-  blocklistCount: number;
-  blocklistLoading: boolean;
-  onChange: (section: SettingsSectionId) => void;
-}) {
-  return (
-    <div className="overflow-x-auto border border-[#c8c5ca] bg-white p-[4px]" aria-label="Settings sections">
-      <div className="flex min-w-max gap-[4px]">
-        {SETTINGS_SECTIONS.map((section) => {
-          const Icon = section.icon;
-          const active = activeSection === section.id;
-          return (
-            <button
-              key={section.id}
-              type="button"
-              aria-pressed={active}
-              onClick={() => onChange(section.id)}
-              className={`inline-flex h-[40px] items-center justify-center gap-[8px] rounded-[2px] px-[12px] text-[13px] font-medium leading-5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181b] ${
-                active
-                  ? 'bg-[#18181b] text-white'
-                  : 'text-[#47464a] hover:bg-[#fafafa] hover:text-[#18181b]'
-              }`}
-            >
-              <Icon className="h-[14px] w-[14px]" aria-hidden="true" />
-              <span>{section.label}</span>
-              {section.id === 'current-blocklist' && !blocklistLoading && (
-                <span
-                  className={`min-w-[20px] rounded-[2px] px-[5px] py-[1px] text-center font-mono text-[11px] leading-4 ${
-                    active ? 'bg-white/15 text-white' : 'bg-[#e5e2e1] text-[#47464a]'
-                  }`}
-                >
-                  {blocklistCount}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
     </div>
   );
 }
@@ -453,24 +404,17 @@ export function SettingsScreen() {
   }, [loadBlocklist]);
 
   useEffect(() => {
-    const syncSectionFromHash = () => {
-      setActiveSection(sectionFromHash(window.location.hash));
+    const syncSection = () => {
+      setActiveSection(sectionFromLocation());
     };
-    syncSectionFromHash();
-    window.addEventListener('hashchange', syncSectionFromHash);
-    window.addEventListener('popstate', syncSectionFromHash);
+    syncSection();
+    window.addEventListener('popstate', syncSection);
+    window.addEventListener('operations-settings-section-change', syncSection);
     return () => {
-      window.removeEventListener('hashchange', syncSectionFromHash);
-      window.removeEventListener('popstate', syncSectionFromHash);
+      window.removeEventListener('popstate', syncSection);
+      window.removeEventListener('operations-settings-section-change', syncSection);
     };
   }, []);
-
-  const handleSectionChange = (section: SettingsSectionId) => {
-    setActiveSection(section);
-    const url = new URL(window.location.href);
-    url.hash = section;
-    window.history.pushState(null, '', url);
-  };
 
   const handleCreated = async (message: string) => {
     setSuccess(message);
@@ -538,7 +482,11 @@ export function SettingsScreen() {
   })();
 
   return (
-    <OperationsShell health={health}>
+    <OperationsShell
+      health={health}
+      settingsBlocklistCount={sortedEntries.length}
+      settingsBlocklistLoading={isLoading}
+    >
       <SettingsHeader health={health} />
       {success && (
         <div className="flex items-center gap-[8px] border border-[rgba(0,113,77,0.25)] bg-[rgba(108,248,187,0.12)] px-[12px] py-[10px] text-[12px] leading-4 text-[#00714d]">
@@ -546,12 +494,6 @@ export function SettingsScreen() {
           {success}
         </div>
       )}
-      <SettingsSubnav
-        activeSection={activeSection}
-        blocklistCount={sortedEntries.length}
-        blocklistLoading={isLoading}
-        onChange={handleSectionChange}
-      />
       <div id={`settings-section-${activeSection}`} className="min-w-0 scroll-mt-[88px]">
         {activePanel}
       </div>
