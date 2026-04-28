@@ -64,12 +64,17 @@ type SignerMode = 'phantom' | 'demo';
 
 interface PhantomProvider {
   isPhantom?: boolean;
-  connect: () => Promise<{ publicKey: { toBase58: () => string } }>;
+  connect: (options?: { onlyIfTrusted?: boolean }) => Promise<{ publicKey: { toBase58: () => string } }>;
   disconnect?: () => Promise<void>;
   signMessage?: (
     message: Uint8Array,
     encoding?: 'utf8'
   ) => Promise<{ signature: Uint8Array } | Uint8Array>;
+}
+
+interface PhantomProviderError {
+  code?: number;
+  message?: string;
 }
 
 interface CheckoutFormState {
@@ -158,8 +163,30 @@ function useHealthSnapshot() {
 
 function getPhantomProvider(): PhantomProvider | null {
   if (typeof window === 'undefined') return null;
-  const provider = (window as Window & { solana?: PhantomProvider }).solana;
+  const browserWindow = window as Window & {
+    phantom?: { solana?: PhantomProvider };
+    solana?: PhantomProvider;
+  };
+  const provider = browserWindow.phantom?.solana ?? browserWindow.solana;
   return provider?.isPhantom ? provider : null;
+}
+
+function isPhantomProviderError(error: unknown): error is PhantomProviderError {
+  return typeof error === 'object' && error !== null && ('message' in error || 'code' in error);
+}
+
+function phantomErrorMessage(error: unknown, fallback: string) {
+  if (!isPhantomProviderError(error)) return fallback;
+  if (error.code === 4001) {
+    return 'Phantom connection was cancelled. Approve the connection request to continue.';
+  }
+  if (error.code === -32002) {
+    return 'Phantom already has a pending request. Open the extension and finish or reject it.';
+  }
+  if (error.code === -32603 || error.message?.toLowerCase().includes('unexpected')) {
+    return 'Phantom returned an internal provider error. Unlock Phantom, refresh the page, and try again in Chrome/Brave/Edge with the Phantom extension enabled.';
+  }
+  return error.message || fallback;
 }
 
 function parseAmountToRawUnits(value: string, decimals: number): number {
@@ -886,7 +913,10 @@ export function CheckoutScreen() {
     }
 
     try {
-      const response = await provider.connect();
+      const response = await provider.connect({ onlyIfTrusted: false });
+      if (!response?.publicKey) {
+        throw new Error('Phantom connected but did not return a public key.');
+      }
       const publicKey = response.publicKey.toBase58();
       setWallet({
         publicKey,
@@ -902,7 +932,7 @@ export function CheckoutScreen() {
       setWallet((current) => ({
         ...current,
         connecting: false,
-        error: err instanceof Error ? err.message : 'Wallet connection rejected',
+        error: phantomErrorMessage(err, 'Wallet connection rejected'),
       }));
     }
   };
@@ -1000,9 +1030,13 @@ export function CheckoutScreen() {
     if (!provider?.signMessage || !wallet.publicKey) {
       throw new Error('Connect Phantom before signing.');
     }
-    const result = await provider.signMessage(new TextEncoder().encode(message), 'utf8');
-    const signature = result instanceof Uint8Array ? result : result.signature;
-    return bs58.encode(signature);
+    try {
+      const result = await provider.signMessage(new TextEncoder().encode(message), 'utf8');
+      const signature = result instanceof Uint8Array ? result : result.signature;
+      return bs58.encode(signature);
+    } catch (err) {
+      throw new Error(phantomErrorMessage(err, 'Phantom message signing failed'));
+    }
   };
 
   const handleSubmitSignedTransfer = async (mode: SignerMode) => {
