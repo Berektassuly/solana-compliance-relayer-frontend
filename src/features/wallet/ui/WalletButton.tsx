@@ -145,7 +145,7 @@ export function WalletButton({ className = '' }: WalletButtonProps) {
                 <ShieldCheck className="h-4 w-4 text-primary" />
                 <div className="text-left">
                   <p className="font-medium">Enterprise</p>
-                  <p className="text-xs text-muted">Confidential transfers</p>
+                  <p className="text-xs text-muted">Advanced compliance review</p>
                 </div>
               </button>
             </div>

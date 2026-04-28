@@ -90,10 +90,10 @@ function InvestigationHeader() {
   return (
     <div className="flex flex-col gap-[4px]">
       <h1 className="text-[24px] font-semibold leading-8 tracking-[-0.48px] text-[#1c1b1b]">
-        Investigations
+        Evidence Review
       </h1>
       <p className="text-[13px] leading-[18px] text-[#47464a]">
-        Check wallets, transfer evidence, and blocklist decisions against live backend records.
+        Review public wallet addresses, transfer evidence, and blocklist decisions against live backend records.
       </p>
     </div>
   );
@@ -118,7 +118,7 @@ function InvestigationForm({
 }) {
   return (
     <Panel
-      title="Investigation Console"
+      title="Evidence Console"
       action={<FileSearch className="h-[15px] w-[15px] text-[#47464a]" aria-hidden="true" />}
       bodyClassName="p-[16px]"
     >
@@ -145,7 +145,7 @@ function InvestigationForm({
 
         <div>
           <FieldLabel htmlFor="investigation-query">
-            {mode === 'wallet' ? 'Wallet Address' : 'Transfer Request ID'}
+            {mode === 'wallet' ? 'Public Wallet Address' : 'Transfer Request ID'}
           </FieldLabel>
           <div className="relative">
             <Search className="pointer-events-none absolute left-[10px] top-[10px] h-[14px] w-[14px] text-[#71717a]" />
@@ -155,7 +155,7 @@ function InvestigationForm({
               onChange={(event) => onQueryChange(event.target.value)}
               placeholder={
                 mode === 'wallet'
-                  ? 'Base58 wallet address'
+                  ? '7T8jgzkGkhuNU9c6wJ9SGqJgLiBAWi49S6h2V1PjoCwG'
                   : '550e8400-e29b-41d4-a716-446655440000'
               }
               autoComplete="off"
@@ -168,6 +168,12 @@ function InvestigationForm({
           {error && (
             <p id="investigation-error" className="mt-[6px] text-[12px] leading-4 text-[#ba1a1a]">
               {error}
+            </p>
+          )}
+          {mode === 'wallet' && (
+            <p className="mt-[6px] text-[12px] leading-4 text-[#71717a]">
+              Paste any public Solana Base58 address to run a risk lookup. Never enter a
+              seed phrase, private key, or keypair file.
             </p>
           )}
         </div>
@@ -257,7 +263,7 @@ function RiskOutcomePanel({
         <EmptyState
           compact
           title="No wallet check yet"
-          body="Run a wallet lookup to see Range, Helius, and internal blocklist evidence."
+          body="Run a public-address lookup to see Range, Helius, and internal blocklist evidence."
         />
       )}
     </Panel>

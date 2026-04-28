@@ -105,7 +105,7 @@ export const useWalletStore = create<WalletState>()(
 // ============================================================================
 
 /**
- * Check if user can use confidential transfers
+ * Check if user can use advanced compliance features.
  */
 export function useCanUseConfidential(): boolean {
   return useWalletStore((state) => 

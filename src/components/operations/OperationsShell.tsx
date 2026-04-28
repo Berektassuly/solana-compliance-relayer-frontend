@@ -8,10 +8,11 @@ import {
   Bell,
   ChevronDown,
   ClipboardList,
+  CreditCard,
+  FileSearch,
   Gauge,
   Server,
   Settings,
-  ShieldAlert,
   SquareStack,
   Zap,
 } from 'lucide-react';
@@ -22,9 +23,10 @@ import { healthLabel, INITIAL_HEALTH, statusTone } from './operations-utils';
 
 const navItems = [
   { label: 'Overview', href: '/dashboard', icon: Gauge },
-  { label: 'Investigations', href: '/dashboard/investigations', icon: ShieldAlert },
+  { label: 'Checkout', href: '/dashboard/checkout', icon: CreditCard },
   { label: 'Transactions', href: '/dashboard/transactions', icon: ClipboardList },
   { label: 'Relayer Nodes', href: '/dashboard/relayer-nodes', icon: Server },
+  { label: 'Evidence', href: '/dashboard/investigations', icon: FileSearch },
   { label: 'Settings', href: '/dashboard/settings', icon: Settings },
 ];
 

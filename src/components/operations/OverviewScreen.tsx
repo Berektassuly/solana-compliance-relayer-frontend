@@ -6,11 +6,11 @@ import {
   Activity,
   AlertCircle,
   Clock3,
+  CreditCard,
   Database,
   Download,
   LockKeyhole,
   MoreHorizontal,
-  Plus,
   Radio,
   RefreshCw,
   Search,
@@ -248,11 +248,11 @@ function PageHeader({
           Export Logs
         </SecondaryButton>
         <Link
-          href="/dashboard/settings"
+          href="/dashboard/checkout"
           className="inline-flex h-[36px] items-center gap-[8px] rounded-[2px] bg-black px-[16px] text-[13px] font-medium leading-[18px] text-white shadow-[0_1px_1px_rgba(0,0,0,0.05)] transition hover:bg-[#2b2b2b] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#18181b] focus-visible:ring-offset-2"
         >
-          <Plus className="h-[11px] w-[11px]" aria-hidden="true" />
-          New Rule
+          <CreditCard className="h-[12px] w-[12px]" aria-hidden="true" />
+          New Checkout
         </Link>
       </div>
     </div>

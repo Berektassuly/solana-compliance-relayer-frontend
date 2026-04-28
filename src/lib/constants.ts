@@ -43,7 +43,7 @@ export const MODE_LABELS = {
     description: 'Standard transfer with compliance verification',
   },
   confidential: {
-    hint: 'Will be encrypted via ElGamal',
-    description: 'Privacy-preserving transfer with zero-knowledge proofs',
+    hint: 'Disabled in the public demo while Solana ZK support is caveated',
+    description: 'Token-2022 confidential transfer capability, not a live checkout path',
   },
 } as const;

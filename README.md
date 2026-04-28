@@ -2,7 +2,7 @@
 
 # Solana Compliance Relayer Frontend
 
-### Real-time dashboard for privacy-preserving Solana transfers with client-side WASM signing.
+### Compliance-first Solana stablecoin checkout, virtual-card funding, and relayer settlement dashboard.
 
 [![Next.js](https://img.shields.io/badge/Next.js-000000?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
@@ -36,12 +36,14 @@ Compliance dashboards for privacy protocols face a critical UX paradox: **operat
 
 | Feature | Description |
 |---------|-------------|
-| **WASM Ed25519 Signer** | Client-side Rust module (`ed25519-dalek`) for secure transaction signing with nonce-based replay protection |
-| **Interactive Terminal** | Submit public or confidential transfers with real-time validation and signature generation |
+| **Phantom Checkout Authorization** | Connect Phantom, sign the relayer authorization message, and submit it to checkout sessions |
+| **Checkout Sessions** | Create merchant checkout, virtual-card funding, and remittance sessions through `/checkout/sessions` |
+| **WASM Demo Signer** | Clearly labeled fallback identity for local demos when Phantom is unavailable |
 | **Analytics Dashboard** | 24h volume charts, 7-day distribution, success rate gauge, and security flag monitoring |
 | **Real-Time Monitor** | Transaction table with 3s polling, status badges, and one-click retry functionality |
 | **Risk Scanner** | Pre-flight wallet compliance checker with animated Blocklist → Range → Helius analysis |
-| **Admin Blocklist** | Overlay panel for managing blocked addresses with CRUD operations |
+| **Admin Blocklist** | Server-side proxy for managing blocked addresses with CRUD operations |
+| **Confidential Transfer Caveat** | Token-2022 confidential transfers are treated as backend/network capability, not the public checkout demo path |
 
 ---
 
@@ -119,13 +121,19 @@ cp pkg/solana_transfer_wasm_bg.wasm ../public/wasm/
 cp pkg/solana_transfer_wasm_bg.js ../public/wasm/
 
 # Return to root and start development server
-cd .. && pnpm dev
+cd .. && pnpm dev -- --port 3001
 ```
 
-The application runs on `http://localhost:3000`. Configure the backend URL via `.env.local`:
+Recommended local setup:
+
+- Backend relayer: `http://localhost:3000`
+- Frontend dashboard: `http://localhost:3001`
+
+Configure the backend URL via `.env.local`:
 
 ```env
-NEXT_PUBLIC_API_URL=https://your-backend.railway.app
+NEXT_PUBLIC_API_URL=http://localhost:3000
+ADMIN_API_KEY=
 ```
 
 ---
@@ -154,9 +162,10 @@ NEXT_PUBLIC_API_URL=https://your-backend.railway.app
 
 | Phase | Feature | Status |
 |-------|---------|--------|
-| 1–3 | Terminal, Monitor, WASM signing | ✅ Complete |
-| 4–6 | Analytics dashboard, Risk Scanner, Admin panel | ✅ Complete |
-| 7–10 | Nonce/v2 API, real-time metrics, system health bar | ✅ Complete |
+| 1-3 | Monitor, WASM demo signing, nonce support | Complete |
+| 4-6 | Analytics dashboard, Risk Scanner, Admin panel | Complete |
+| 7-10 | Checkout sessions, Phantom message signing, audit report display | Complete |
+| Caveat | Token-2022 confidential transfer UI | Disabled until network support is reliable |
 
 ---
 

@@ -304,7 +304,8 @@ The application uses **Next.js 16 App Router** with the following conventions:
 | Route | File | Description |
 |-------|------|-------------|
 | `/` | `src/app/page.tsx` | Unified home dashboard |
-| `/dashboard` | `src/app/dashboard/page.tsx` | Analytics-focused view |
+| `/dashboard` | `src/app/dashboard/page.tsx` | Operations overview |
+| `/dashboard/checkout` | `src/app/dashboard/checkout/page.tsx` | S1lkPay checkout and virtual-card funding flow |
 | `/admin` | `src/app/admin/page.tsx` | Administrative panel |
 
 ### Route Groups
@@ -465,7 +466,8 @@ pnpm lint
 
 | Variable | Required | Description |
 |----------|----------|-------------|
-| `NEXT_PUBLIC_API_URL` | Yes | Backend Relayer API base URL |
+| `NEXT_PUBLIC_API_URL` | Yes | Backend Relayer API base URL, defaults to `http://localhost:3000` locally |
+| `ADMIN_API_KEY` | Optional | Server-side credential used only by Next.js admin proxy routes |
 
 ---
 

@@ -7,7 +7,6 @@ import {
   ShieldAlert,
   Trash2,
   Plus,
-  AlertTriangle,
   CheckCircle,
   XCircle,
   Loader2,
@@ -23,7 +22,6 @@ import {
 import type { BlocklistEntry, ListBlocklistResponse } from '@/services/blocklist';
 
 export default function AdminPage() {
-  const [adminKey, setAdminKey] = useState('');
   const [address, setAddress] = useState('');
   const [reason, setReason] = useState('');
   const [toast, setToast] = useState<{
@@ -104,7 +102,7 @@ export default function AdminPage() {
         <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center gap-4">
             <Link
-              href="/"
+              href="/dashboard"
               className="flex items-center gap-2 text-muted hover:text-foreground transition-colors"
             >
               <ArrowLeft className="h-4 w-4" />
@@ -119,32 +117,18 @@ export default function AdminPage() {
             </div>
           </div>
 
-          {/* Admin Key Input */}
-          <div className="flex items-center gap-2">
-            <label className="text-xs text-muted">Admin Key:</label>
-            <input
-              type="password"
-              value={adminKey}
-              onChange={(e) => setAdminKey(e.target.value)}
-              placeholder="Enter admin key..."
-              className="w-40 px-3 py-1.5 text-sm bg-background border border-border rounded-md text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/50"
-            />
+          <div className="hidden rounded-md border border-border bg-background px-3 py-1.5 text-xs text-muted sm:block">
+            Auth via server-side ADMIN_API_KEY proxy
           </div>
         </div>
       </header>
 
-      {/* Warning Banner */}
-      {!adminKey && (
-        <div className="bg-yellow-500/10 border-b border-yellow-500/30 py-3">
-          <div className="max-w-6xl mx-auto px-4 flex items-center gap-2 text-yellow-400 text-sm">
-            <AlertTriangle className="h-4 w-4 flex-shrink-0" />
-            <span>
-              No admin key provided. Operations may fail if authentication is
-              required on the server.
-            </span>
-          </div>
+      <div className="border-b border-border bg-panel/60 py-3">
+        <div className="max-w-6xl mx-auto px-4 text-sm text-muted">
+          Admin credentials are configured server-side with ADMIN_API_KEY. Client requests
+          call /api/admin/blocklist and never receive the key.
         </div>
-      )}
+      </div>
 
       {/* Toast Notification */}
       {toast && (
@@ -179,7 +163,7 @@ export default function AdminPage() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm text-muted mb-2">
-                  Wallet Address
+                  Public Wallet Address
                 </label>
                 <input
                   type="text"
@@ -189,6 +173,9 @@ export default function AdminPage() {
                   className="w-full px-4 py-3 bg-background border border-border rounded-lg text-foreground placeholder:text-muted focus:outline-none focus:ring-2 focus:ring-primary/50 font-mono text-sm"
                   required
                 />
+                <p className="mt-2 text-xs text-muted">
+                  Public address only. Never enter a seed phrase, private key, or keypair file.
+                </p>
               </div>
               <div>
                 <label className="block text-sm text-muted mb-2">

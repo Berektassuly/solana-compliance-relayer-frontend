@@ -130,7 +130,7 @@ function BlocklistForm({
     const trimmedAddress = address.trim();
     const trimmedReason = reason.trim();
     const nextAddressError =
-      trimmedAddress.length < 32 ? 'Enter a full Solana wallet address.' : null;
+      trimmedAddress.length < 32 ? 'Enter a full public Solana address.' : null;
     const nextReasonError = trimmedReason.length < 3 ? 'Add a reason for the audit trail.' : null;
     setAddressError(nextAddressError);
     setReasonError(nextReasonError);
@@ -160,7 +160,7 @@ function BlocklistForm({
       <form className="space-y-[16px]" onSubmit={handleSubmit}>
         {submitError && <ErrorBanner message={submitError} />}
         <div>
-          <FieldLabel htmlFor="blocklist-address">Wallet Address</FieldLabel>
+          <FieldLabel htmlFor="blocklist-address">Public Wallet Address</FieldLabel>
           <TextInput
             id="blocklist-address"
             value={address}
@@ -168,7 +168,7 @@ function BlocklistForm({
               setAddress(event.target.value);
               setAddressError(null);
             }}
-            placeholder="Base58 wallet address"
+            placeholder="Base58 public address"
             autoComplete="off"
             spellCheck={false}
             className="font-mono"
@@ -180,6 +180,9 @@ function BlocklistForm({
               {addressError}
             </p>
           )}
+          <p className="mt-[6px] text-[12px] leading-4 text-[#71717a]">
+            Blocklist rules use public addresses only. Never enter seed phrases or private keys.
+          </p>
         </div>
         <div>
           <FieldLabel htmlFor="blocklist-reason">Reason</FieldLabel>

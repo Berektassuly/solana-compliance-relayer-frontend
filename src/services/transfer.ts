@@ -41,9 +41,11 @@ export async function submitTransfer(
       throw new Error(`Unsupported asset: ${request.asset}`);
   }
 
-  // 3. Handle confidential mode (not fully implemented yet)
+  // 3. Handle confidential mode (not exposed in the public demo path)
   if (request.mode === 'confidential') {
-    throw new Error('Confidential transfers are not yet supported in the UI. Use the API directly.');
+    throw new Error(
+      'Confidential transfers are caveated while Solana ZK support is unavailable on mainnet/devnet. Use the public checkout demo.'
+    );
   }
 
   // 4. Generate a unique nonce for replay protection (v2 API requirement)
